@@ -2,6 +2,7 @@ import { getQuery } from 'h3'
 import type { Question, QuestionCategory } from '~/types'
 import { CATEGORY_INFO } from '~/server/data/questions'
 import { ok, fail } from '~/server/utils/response'
+import { kv } from '~/server/utils/kv'
 
 // 洗牌
 function shuffle<T>(arr: T[]): T[] {
@@ -17,14 +18,14 @@ export default defineEventHandler(async (event) => {
   const q = getQuery(event)
   const count = Math.min(Math.max(Number(q.count) || 10, 1), 50)
   const category = (q.category as QuestionCategory | undefined) || undefined
-  const storage = useStorage('db')
-  const index = (await storage.getItem<string[]>('db:questions:index')) || []
+  
+  const index = (await kv.get<string[]>('db:questions:index')) || []
   if (!index.length) return fail('题库尚未初始化')
 
   // 加载全部题目（题库量小，直接内存过滤）
   const all: Question[] = []
   for (const id of index) {
-    const q0 = await storage.getItem<Question>(`db:questions:item:${id}`)
+    const q0 = await kv.get<Question>(`db:questions:item:${id}`)
     if (q0) all.push(q0)
   }
 

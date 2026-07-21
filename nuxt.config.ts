@@ -24,14 +24,6 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
-    // 服务端 KV：Vercel KV（项目关联 Stores 后自动注入 KV_REST_API_URL/KV_REST_API_TOKEN）
-    storage: {
-      db: {
-        driver: 'vercelKV',
-        url: process.env.KV_REST_API_URL,
-        token: process.env.KV_REST_API_TOKEN
-      }
-    },
     // Vercel 部署预设
     preset: process.env.NITRO_PRESET || 'vercel'
   }

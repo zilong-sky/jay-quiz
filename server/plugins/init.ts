@@ -3,18 +3,17 @@
 // 2. 启动一次性执行一次过期周榜清理，并注册每日检查
 import { ALL_QUESTIONS } from '~/server/data/questions'
 import { rankingRepo } from '~/server/utils/store'
+import { kv } from '~/server/utils/kv'
 import { getWeekKey, weekKeyToDate } from '~/server/utils/week'
 
 export default defineNitroPlugin(async () => {
-  const storage = useStorage('db')
-
   // —— 题库初始化（幂等）——
-  const existing = await storage.getItem<string[]>('db:questions:index')
+  const existing = await kv.get<string[]>('db:questions:index')
   if (!existing || existing.length === 0) {
     for (const q of ALL_QUESTIONS) {
-      await storage.setItem(`db:questions:item:${q.id}`, q)
+      await kv.set(`db:questions:item:${q.id}`, q)
     }
-    await storage.setItem('db:questions:index', ALL_QUESTIONS.map(q => q.id))
+    await kv.set('db:questions:index', ALL_QUESTIONS.map(q => q.id))
   }
 
   // —— 过期周榜清理 ——
