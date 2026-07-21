@@ -98,6 +98,7 @@ const lastCorrect = ref(false)
 const blankInput = ref('')
 const uploadStatus = ref('')
 const uploadChoiceMade = ref(false)
+const storage = useStorage()
 
 const timerEnabled = ref(false)
 const remaining = ref(30)
@@ -110,6 +111,40 @@ const progress = computed(() =>
 )
 const correctCount = computed(() =>
   quiz.session.value ? quiz.session.value.records.filter(r => r.correct).length : 0
+)
+
+// 恢复未完成的答题进度
+onMounted(async () => {
+  const saved = storage.get<{ questions: any[]; currentIndex: number; category?: string }>('quizSession')
+  const currentCategory = route.query.cat as string
+  // 只有当保存的分类与当前请求的分类一致时才恢复
+  if (saved && saved.questions && saved.questions.length > 0 && saved.category === currentCategory) {
+    quiz.questions.value = saved.questions
+    quiz.currentIndex.value = saved.currentIndex
+    loading.value = false
+    return
+  }
+  // 没有或分类不一致则重新加载
+  loading.value = true
+  const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
+  loading.value = false
+  if (!res || res.code !== 0) {
+    loadError.value = res.message || '题目加载失败'
+  }
+})
+
+// 每次切换题目时保存进度
+watch(
+  () => quiz.currentIndex.value,
+  () => {
+    if (quiz.questions.value.length > 0 && !quiz.finished.value) {
+      storage.set('quizSession', {
+        questions: quiz.questions.value,
+        currentIndex: quiz.currentIndex.value,
+        category: route.query.cat as string
+      })
+    }
+  }
 )
 
 const selectedOpt = ref<string | null>(null)
@@ -162,6 +197,9 @@ function nextQuestion() {
 }
 
 async function handleFinish() {
+  // 答题完成，清除进度
+  storage.remove('quizSession')
+  
   // 休闲模式：不保存到战绩记录，只更新本周最高分
   const currentWeek = getWeekKey()
   const currentScore = quiz.session.value?.totalScore || 0
@@ -232,6 +270,9 @@ function startTimer() {
 function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null } }
 
 async function restart() {
+  // 重新开始答题，清除进度
+  storage.remove('quizSession')
+  
   answered.value = false
   selectedOpt.value = null
   blankInput.value = ''
