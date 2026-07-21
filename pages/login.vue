@@ -26,6 +26,18 @@ async function onSubmit() {
   const res = await auth.login(account.value.trim(), password.value)
   loading.value = false
   if (res.code !== 0) { err.value = res.message; return }
+
+  // 登录成功后，若带 uploadBest 参数则自动上传本地最高分
+  if (route.query.uploadBest === '1') {
+    const localBest = useStorage().get<{ score: number; costMs: number }>('localBestScore')
+    if (localBest) {
+      await useRequest('/api/rankings/submit', {
+        method: 'POST',
+        body: { score: localBest.score, costMs: localBest.costMs }
+      })
+    }
+  }
+
   const redirect = (route.query.redirect as string) || '/'
   router.replace(redirect)
 }

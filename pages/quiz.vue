@@ -63,13 +63,22 @@
 
       <p v-if="uploadStatus" class="subtle">{{ uploadStatus }}</p>
 
+      <!-- 未登录：选择是否参与排行榜 -->
+      <div v-if="!auth.isLoggedIn.value && !uploadChoiceMade" style="margin-top:1rem;padding:1rem;background:#f8f5e8;border-radius:8px">
+        <p style="margin:0 0 .5rem 0;font-weight:500">📊 是否参与周榜排名？</p>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn" @click="uploadAndLogin">参与排行榜（需登录）</button>
+          <button class="btn ghost" @click="saveLocalOnly">仅保存本地</button>
+        </div>
+      </div>
+
       <div style="display:flex;gap:.5rem;margin-top:.5rem">
         <button class="btn" @click="restart">再来一局</button>
         <NuxtLink to="/ranking" class="btn ghost">看看排行榜</NuxtLink>
       </div>
 
-      <p v-if="!auth.isLoggedIn.value" class="subtle" style="margin-top:.75rem">
-        💡 <NuxtLink to="/login">登录</NuxtLink> 后成绩会自动上传周榜。
+      <p v-if="!auth.isLoggedIn.value && uploadChoiceMade" class="subtle" style="margin-top:.75rem">
+        💡 <NuxtLink to="/login">登录</NuxtLink> 后可自动上传历史最高分参与排名。
       </p>
     </div>
   </section>
@@ -87,6 +96,7 @@ const answered = ref(false)
 const lastCorrect = ref(false)
 const blankInput = ref('')
 const uploadStatus = ref('')
+const uploadChoiceMade = ref(false)
 
 const timerEnabled = ref(false)
 const remaining = ref(30)
@@ -151,6 +161,14 @@ function nextQuestion() {
 }
 
 async function handleFinish() {
+  // 保存本地最高分
+  const currentScore = quiz.session.value?.totalScore || 0
+  const currentCostMs = quiz.session.value?.totalCostMs || 0
+  const localBest = useStorage().get<{ score: number; costMs: number }>('localBestScore')
+  if (!localBest || currentScore > localBest.score || (currentScore === localBest.score && currentCostMs < localBest.costMs)) {
+    useStorage().set('localBestScore', { score: currentScore, costMs: currentCostMs })
+  }
+
   if (auth.isLoggedIn.value) {
     uploadStatus.value = '成绩上传中...'
     const res = await quiz.uploadScore()
@@ -159,9 +177,19 @@ async function handleFinish() {
     } else {
       uploadStatus.value = '上传失败：' + (res?.message ?? '')
     }
-  } else {
-    uploadStatus.value = '未登录用户成绩不会上榜（成绩已保存到「我的战绩」）'
+    uploadChoiceMade.value = true
   }
+}
+
+function saveLocalOnly() {
+  uploadChoiceMade.value = true
+  uploadStatus.value = '✅ 成绩已保存到本地（未参与排行榜）'
+}
+
+async function uploadAndLogin() {
+  uploadChoiceMade.value = true
+  // 跳转登录页，登录后自动返回排行榜
+  router.push('/login?redirect=/ranking&uploadBest=1')
 }
 
 function startTimer() {
@@ -188,6 +216,7 @@ async function restart() {
   selectedOpt.value = null
   blankInput.value = ''
   uploadStatus.value = ''
+  uploadChoiceMade.value = false
   loadError.value = ''
   loading.value = true
   const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
