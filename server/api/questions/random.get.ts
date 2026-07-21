@@ -1,6 +1,6 @@
 import { getQuery } from 'h3'
 import type { Question, QuestionCategory } from '~/types'
-import { CATEGORY_INFO } from '~/server/data/questions'
+import { CATEGORY_INFO, LYRICS, CREATION, LIFE } from '~/server/data/questions'
 import { ok, fail } from '~/server/utils/response'
 import { kv } from '~/server/utils/kv'
 
@@ -14,20 +14,29 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+// 获取全部题目（优先 KV，兜底用种子数据）
+async function getAllQuestions(): Promise<Question[]> {
+  const index = (await kv.get<string[]>('db:questions:index')) || []
+  if (index.length > 0) {
+    // KV 有数据，从 KV 加载
+    const all: Question[] = []
+    for (const id of index) {
+      const q0 = await kv.get<Question>(`db:questions:item:${id}`)
+      if (q0) all.push(q0)
+    }
+    return all
+  }
+  // KV 为空，直接用种子数据
+  return [...LYRICS, ...CREATION, ...LIFE]
+}
+
 export default defineEventHandler(async (event) => {
   const q = getQuery(event)
   const count = Math.min(Math.max(Number(q.count) || 10, 1), 50)
   const category = (q.category as QuestionCategory | undefined) || undefined
-  
-  const index = (await kv.get<string[]>('db:questions:index')) || []
-  if (!index.length) return fail('题库尚未初始化')
 
-  // 加载全部题目（题库量小，直接内存过滤）
-  const all: Question[] = []
-  for (const id of index) {
-    const q0 = await kv.get<Question>(`db:questions:item:${id}`)
-    if (q0) all.push(q0)
-  }
+  const all = await getAllQuestions()
+  if (!all.length) return fail('题库尚未初始化')
 
   let picked: Question[]
   if (category) {

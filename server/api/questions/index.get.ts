@@ -1,6 +1,24 @@
 // 题目列表（支持分页）
+import type { Question } from '~/types'
+import { LYRICS, CREATION, LIFE } from '~/server/data/questions'
 import { kv } from '~/server/utils/kv'
-import { ok, fail } from '~/server/utils/response'
+import { ok } from '~/server/utils/response'
+
+const SEED_QUESTIONS = [...LYRICS, ...CREATION, ...LIFE]
+
+// 获取全部题目（优先 KV，兜底用种子数据）
+async function getAllQuestions(): Promise<Question[]> {
+  const index = (await kv.get<string[]>('db:questions:index')) || []
+  if (index.length > 0) {
+    const all: Question[] = []
+    for (const id of index) {
+      const q0 = await kv.get<Question>(`db:questions:item:${id}`)
+      if (q0) all.push(q0)
+    }
+    return all
+  }
+  return SEED_QUESTIONS
+}
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -8,12 +26,7 @@ export default defineEventHandler(async (event) => {
   const pageSize = Math.min(Math.max(Number(query.pageSize) || 20, 1), 100)
   const category = query.category as string | undefined
 
-  const index = (await kv.get<string[]>('db:questions:index')) || []
-  let all = await Promise.all(
-    index.map(id => kv.get<{ id: string; category: string; content: string; type: string }>(`db:questions:item:${id}`))
-  )
-  
-  let list = all.filter(Boolean)
+  let list = await getAllQuestions()
   if (category) {
     list = list.filter(q => q.category === category)
   }
