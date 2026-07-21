@@ -24,10 +24,12 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
-    // 服务端 KV：Vercel KV（已关联）
+    // 服务端 KV：Upstash Redis（已关联）
     storage: {
       db: {
-        driver: 'vercelKV'
+        driver: 'upstash',
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN
       }
     },
     // Vercel 部署预设
