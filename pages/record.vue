@@ -1,7 +1,7 @@
 <template>
   <section>
-    <h2 class="title-brush">📓 我的战绩</h2>
-    <p class="subtle">仅保存在你的设备本地。清除浏览器数据将同步清空。</p>
+    <h2 class="title-brush">📓 冒险战绩</h2>
+    <p class="subtle">仅记录冒险模式成绩，保留积分和用时。</p>
 
     <div class="card">
       <div class="rank-row" style="grid-template-columns:1fr 1fr 1fr">
@@ -13,7 +13,7 @@
     </div>
 
     <h3 class="title-brush" style="font-size:1.2rem">历史记录</h3>
-    <div v-if="!sessions.length" class="card subtle">还没有战绩，去 <NuxtLink to="/quiz">开始答题</NuxtLink> 吧。</div>
+    <div v-if="!sessions.length" class="card subtle">还没有冒险战绩，去 <NuxtLink to="/adventure">开始挑战</NuxtLink> 吧。</div>
     <div v-for="s in sessions" :key="s.id" class="card" style="margin-bottom:.5rem">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <b>{{ new Date(s.finishedAt).toLocaleString() }}</b>

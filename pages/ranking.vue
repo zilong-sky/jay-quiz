@@ -1,6 +1,6 @@
 <template>
   <section>
-    <h2 class="title-brush">🏆 本周排行榜</h2>
+    <h2 class="title-brush">🏆 本周名人榜</h2>
     <p class="subtle">数据来自后端，每周一 00:00 自动重置。同分则用时更短者优先。</p>
 
     <div class="card">

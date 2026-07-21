@@ -58,7 +58,7 @@ export const useQuiz = () => {
     }
   }
 
-  function finish() {
+  function finish(saveToRecord = true) {
     finished.value = true
     const finishedAt = Date.now()
     const sess: QuizSession = {
@@ -71,8 +71,10 @@ export const useQuiz = () => {
       level: calcLevel(totalScore.value)
     }
     session.value = sess
-    // 保存战绩到本地
-    useMyRecord().saveSession(sess)
+    // 保存战绩到本地（休闲模式不保存，仅冒险模式保存）
+    if (saveToRecord) {
+      useMyRecord().saveSession(sess)
+    }
     return sess
   }
 

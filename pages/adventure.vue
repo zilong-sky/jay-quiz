@@ -1,6 +1,7 @@
 <template>
   <section>
-    <h2 class="title-brush">✏️ 开始答题</h2>
+    <h2 class="title-brush">⚔️ 冒险模式</h2>
+    <p class="subtle">挑战极限，冲击名人榜！成绩计入冒险战绩。</p>
 
     <!-- 加载中 -->
     <div v-if="loading" class="card">题库准备中...</div>
@@ -55,7 +56,7 @@
 
     <!-- 结算 -->
     <div v-else-if="quiz.finished.value && quiz.session.value" class="card">
-      <h3 style="margin-top:0;color:#0f3d2e">🎉 答题结果</h3>
+      <h3 style="margin-top:0;color:#0f3d2e">🎉 冒险挑战完成！</h3>
       <p>总分：<b style="font-size:1.5rem;color:#8b1e2b">{{ quiz.session.value.totalScore }}</b> / 100</p>
       <p>粉丝等级：<span class="badge">{{ quiz.session.value.level }}</span></p>
       <p>用时：{{ (quiz.session.value.totalCostMs/1000).toFixed(1) }} 秒</p>
@@ -65,20 +66,20 @@
 
       <!-- 未登录：选择是否参与排行榜 -->
       <div v-if="!auth.isLoggedIn.value && !uploadChoiceMade" style="margin-top:1rem;padding:1rem;background:#f8f5e8;border-radius:8px">
-        <p style="margin:0 0 .5rem 0;font-weight:500">📊 是否参与周榜排名？</p>
+        <p style="margin:0 0 .5rem 0;font-weight:500">📊 是否参与名人榜排名？</p>
         <div style="display:flex;gap:.5rem">
-          <button class="btn" @click="uploadAndLogin">参与排行榜（需登录）</button>
+          <button class="btn" @click="uploadAndLogin">参与排名（需登录）</button>
           <button class="btn ghost" @click="saveLocalOnly">仅保存本地</button>
         </div>
       </div>
 
       <div style="display:flex;gap:.5rem;margin-top:.5rem">
-        <button class="btn" @click="restart">再来一局</button>
-        <NuxtLink to="/ranking" class="btn ghost">看看排行榜</NuxtLink>
+        <button class="btn" @click="restart">再次挑战</button>
+        <NuxtLink to="/ranking" class="btn ghost">查看名人榜</NuxtLink>
       </div>
 
       <p v-if="!auth.isLoggedIn.value && uploadChoiceMade" class="subtle" style="margin-top:.75rem">
-        💡 <NuxtLink to="/login">登录</NuxtLink> 后可自动上传历史最高分参与排名。
+        💡 <NuxtLink to="/login">登录</NuxtLink> 后可自动上传本周最高分参与排名。
       </p>
     </div>
   </section>
@@ -162,7 +163,7 @@ function nextQuestion() {
 }
 
 async function handleFinish() {
-  // 休闲模式：不保存到战绩记录，只更新本周最高分
+  // 冒险模式：保存本周本地最高分（与排行榜周期一致）
   const currentWeek = getWeekKey()
   const currentScore = quiz.session.value?.totalScore || 0
   const currentCostMs = quiz.session.value?.totalCostMs || 0
@@ -185,10 +186,6 @@ async function handleFinish() {
     })
   }
 
-  // 休闲模式调用 finish 时不保存到本地记录
-  // @ts-ignore
-  quiz.finish(false)
-
   if (auth.isLoggedIn.value) {
     uploadStatus.value = '成绩上传中...'
     const res = await quiz.uploadScore()
@@ -203,7 +200,7 @@ async function handleFinish() {
 
 function saveLocalOnly() {
   uploadChoiceMade.value = true
-  uploadStatus.value = '✅ 成绩已保存到本地（未参与排行榜）'
+  uploadStatus.value = '✅ 冒险成绩已保存到本地（未参与排名）'
 }
 
 async function uploadAndLogin() {
@@ -239,7 +236,8 @@ async function restart() {
   uploadChoiceMade.value = false
   loadError.value = ''
   loading.value = true
-  const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
+  // 冒险模式固定混合题库
+  const res = await quiz.loadQuestions(10, undefined)
   if (res.code !== 0) {
     loadError.value = res.message || '题目加载失败'
   }
@@ -249,7 +247,8 @@ async function restart() {
 
 onMounted(async () => {
   await auth.fetchMe()
-  const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
+  // 冒险模式固定混合题库
+  const res = await quiz.loadQuestions(10, undefined)
   if (res.code !== 0) {
     loadError.value = res.message || '题目加载失败'
   }
