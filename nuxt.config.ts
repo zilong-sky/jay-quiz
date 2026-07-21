@@ -24,10 +24,11 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
-    // 服务端 KV：本地 fs，生产 Vercel KV
+    // 服务端 KV：本地 fs，生产 Vercel KV（关联 KV 后再切换）
     storage: {
       db: {
-        driver: 'vercelKV'
+        driver: 'fs',
+        base: './.data/db'
       }
     },
     // Vercel 部署预设
