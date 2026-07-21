@@ -86,6 +86,7 @@
 
 <script setup lang="ts">
 import type { QuestionType } from '~/types'
+import { getWeekKey } from '~/utils/week'
 
 const route = useRoute()
 const quiz = useQuiz()
@@ -161,12 +162,27 @@ function nextQuestion() {
 }
 
 async function handleFinish() {
-  // 保存本地最高分
+  // 本地最高分按周周期管理（与后端排行榜一致）
+  const currentWeek = getWeekKey()
   const currentScore = quiz.session.value?.totalScore || 0
   const currentCostMs = quiz.session.value?.totalCostMs || 0
-  const localBest = useStorage().get<{ score: number; costMs: number }>('localBestScore')
-  if (!localBest || currentScore > localBest.score || (currentScore === localBest.score && currentCostMs < localBest.costMs)) {
-    useStorage().set('localBestScore', { score: currentScore, costMs: currentCostMs })
+
+  const localBest = useStorage().get<{ score: number; costMs: number; week: string }>('localBestScore')
+
+  // 周过期或首次记录时，重置本周最高分
+  if (!localBest || localBest.week !== currentWeek) {
+    useStorage().set('localBestScore', {
+      score: currentScore,
+      costMs: currentCostMs,
+      week: currentWeek
+    })
+  } else if (currentScore > localBest.score || (currentScore === localBest.score && currentCostMs < localBest.costMs)) {
+    // 同周内更新最高分
+    useStorage().set('localBestScore', {
+      score: currentScore,
+      costMs: currentCostMs,
+      week: currentWeek
+    })
   }
 
   if (auth.isLoggedIn.value) {
