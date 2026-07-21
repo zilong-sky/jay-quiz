@@ -25,6 +25,12 @@ export default defineNuxtConfig({
   },
   nitro: {
     // Vercel 部署预设
-    preset: process.env.NITRO_PRESET || 'vercel'
+    preset: process.env.NITRO_PRESET || 'vercel',
+    storage: {
+      db: {
+        driver: 'fs',
+        base: './.data/db'
+      }
+    }
   }
 })
