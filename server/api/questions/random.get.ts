@@ -38,11 +38,23 @@ export default defineEventHandler(async (event) => {
   const all = await getAllQuestions()
   if (!all.length) return fail('题库尚未初始化')
 
-  let picked: Question[]
+  let picked: Question[] = []
+  
+  // 🔧 测试用：拼图题固定放在第一位
+  const allQuestions = await getAllQuestions()
+  const puzzleQuestion = allQuestions.find(q => q.puzzleImage)
+  if (puzzleQuestion) {
+    picked.push(puzzleQuestion)
+  }
+
   if (category) {
-    picked = shuffle(all.filter(x => x.category === category)).slice(0, count)
+    // 选指定分类的其他题，排除已经放的拼图题（避免重复）
+    const otherQuestions = shuffle(allQuestions.filter(x => 
+      x.category === category && x.id !== puzzleQuestion?.id
+    ))
+    picked = [...picked, ...otherQuestions.slice(0, count - picked.length)]
   } else {
-    // 按分类权重抽取
+    // 按分类权重抽取，排除已经放的拼图题
     const bucketCounts = CATEGORY_INFO.map(c => ({ c, n: Math.round(c.weight * count) }))
     // 调整余数
     let diff = count - bucketCounts.reduce((s, b) => s + b.n, 0)
@@ -51,11 +63,28 @@ export default defineEventHandler(async (event) => {
       target.n += diff > 0 ? 1 : -1
       diff += diff > 0 ? -1 : 1
     }
-    picked = bucketCounts.flatMap(({ c, n }) =>
-      shuffle(all.filter(x => x.category === c.key)).slice(0, n)
+    const others = bucketCounts.flatMap(({ c, n }) =>
+      shuffle(allQuestions.filter(x => 
+        x.category === c.key && x.id !== puzzleQuestion?.id
+      )).slice(0, n)
     )
-    picked = shuffle(picked)
+    picked = [...picked, ...others]
+    // 确保数量正确，去重（避免重复题）
+    const seen = new Set<string>()
+    picked = picked.filter(p => {
+      if (seen.has(p.id)) return false
+      seen.add(p.id)
+      return true
+    })
+    // 除了第一题（拼图），其他题目可以打乱顺序
+    if (picked.length > 1) {
+      const [first, ...rest] = picked
+      picked = [first, ...shuffle(rest)]
+    }
   }
+
+  // 确保长度不超过 count
+  picked = picked.slice(0, count)
 
   // 出题时不带 answer 直接返回？为演示与前端立即校验一致，保留 answer 字段。
   // 生产可将 answer 剥离，通过 /api/questions/verify 校验。
