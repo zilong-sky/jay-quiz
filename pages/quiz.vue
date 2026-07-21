@@ -4,6 +4,10 @@
 
     <!-- 加载中 -->
     <div v-if="loading" class="card">题库准备中...</div>
+    <div v-else-if="loadError" class="card" style="color:#b33">
+      {{ loadError }}
+      <button class="btn" @click="restart" style="margin-top:1rem">重试</button>
+    </div>
 
     <!-- 答题中 -->
     <div v-else-if="!quiz.finished.value && quiz.current.value" class="card">
@@ -78,6 +82,7 @@ const route = useRoute()
 const quiz = useQuiz()
 const auth = useAuth()
 const loading = ref(true)
+const loadError = ref('')
 const answered = ref(false)
 const lastCorrect = ref(false)
 const blankInput = ref('')
@@ -183,15 +188,22 @@ async function restart() {
   selectedOpt.value = null
   blankInput.value = ''
   uploadStatus.value = ''
+  loadError.value = ''
   loading.value = true
-  await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
+  const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
+  if (res.code !== 0) {
+    loadError.value = res.message || '题目加载失败'
+  }
   loading.value = false
   startTimer()
 }
 
 onMounted(async () => {
   await auth.fetchMe()
-  await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
+  const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
+  if (res.code !== 0) {
+    loadError.value = res.message || '题目加载失败'
+  }
   loading.value = false
   startTimer()
 })
