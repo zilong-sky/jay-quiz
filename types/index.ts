@@ -12,6 +12,7 @@ export interface Question {
   answer: string              // 单选题存 A/B/C/D；判断题存 "正确"/"错误"；填空题存标准文本
   explanation: string         // 知识点解析
   score?: number              // 单题分值（默认 10）
+  puzzleImage?: string        // 拼图题图片地址，有值说明是拼图模式
 }
 
 export interface QuestionCategoryInfo {

@@ -58,7 +58,14 @@ export const LYRICS: Question[] = [
       options: ['A. 天青色等烟雨', 'B. 一行朱砂到底圈了谁', 'C. 兰亭临帖', 'D. 千年碑易拓却难拓你的美'],
       answer: 'C', explanation: '「兰亭临帖，行书如行云流水」，2008 年《魔杰座》。' }),
   q({ category: 'lyrics', type: 'blank', content: '「____，我说了所有的谎，你全都相信。」（《说了再见》）',
-      answer: '说了再见才发现再也见不到', explanation: '《说了再见》副歌开头。' })
+      answer: '说了再见才发现再也见不到', explanation: '《说了再见》副歌开头。' }),
+  // 🧩 拼图测试题 - 歌词分类，用周杰伦《晴天》MV
+  q({ category: 'lyrics', type: 'single', 
+      content: '「晴天」中「故事的小黄花，从出生那年就____」空白处是？',
+      options: ['A. 飘着', 'B. 开着', 'C. 落着', 'D. 摇着'],
+      answer: 'A', 
+      explanation: '《晴天》是周杰伦《叶惠美》专辑经典歌曲，这句是开头第一句。',
+      puzzleImage: 'https://picsum.photos/seed/jay-qingtian/400/400' })
 ]
 
 // —————— 创作背景类（20 题） ——————

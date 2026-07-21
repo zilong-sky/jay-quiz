@@ -14,26 +14,53 @@
       <div class="subtle">
         第 {{ quiz.currentIndex.value + 1 }} / {{ quiz.questions.value.length }} 题
         <span v-if="timerEnabled" style="float:right">⏱ {{ remaining }}s</span>
+        <span v-if="quiz.current.value.puzzleImage" style="float:right;margin-right:.5rem;color:#8b1e2b">🧩 拼图题</span>
       </div>
       <div class="progress"><span :style="{width: progress + '%'}" /></div>
 
-      <div class="question">{{ quiz.current.value.content }}</div>
+      <!-- 拼图游戏组件 -->
+      <PuzzleGame
+        v-if="quiz.current.value.puzzleImage && !puzzleCompleted"
+        ref="puzzleRef"
+        :image-url="quiz.current.value.puzzleImage"
+        @complete="onPuzzleComplete"
+      />
+
+      <!-- 题目内容 -->
+      <div class="question" :class="{ blurred: quiz.current.value.puzzleImage && !puzzleCompleted }">
+        {{ quiz.current.value.content }}
+      </div>
+
+      <!-- 拼图未完成提示 -->
+      <div v-if="quiz.current.value.puzzleImage && !puzzleCompleted" class="puzzle-mask">
+        🧩 完成拼图才能解锁题目和选项
+      </div>
 
       <!-- 单选/判断 -->
-      <div v-if="quiz.current.value.type !== 'blank'" class="options">
+      <div v-if="quiz.current.value.type !== 'blank'" class="options" :class="{ disabled: quiz.current.value.puzzleImage && !puzzleCompleted }">
         <button
           v-for="(opt, i) in quiz.current.value.options"
           :key="i"
           class="opt"
           :class="optClass(opt)"
-          :disabled="answered"
+          :disabled="answered || (quiz.current.value.puzzleImage && !puzzleCompleted)"
           @click="chooseOption(opt)"
         >{{ opt }}</button>
       </div>
       <!-- 填空 -->
-      <div v-else>
-        <input v-model="blankInput" class="input" placeholder="请输入答案..." :disabled="answered" />
-        <button v-if="!answered" class="btn" @click="submitBlank">提交</button>
+      <div v-else :class="{ disabled: quiz.current.value.puzzleImage && !puzzleCompleted }">
+        <input
+          v-model="blankInput"
+          class="input"
+          placeholder="请输入答案..."
+          :disabled="answered || (quiz.current.value.puzzleImage && !puzzleCompleted)"
+        />
+        <button
+          v-if="!answered"
+          class="btn"
+          @click="submitBlank"
+          :disabled="quiz.current.value.puzzleImage && !puzzleCompleted"
+        >提交</button>
       </div>
 
       <!-- 解析 -->
@@ -85,6 +112,7 @@
 </template>
 
 <script setup lang="ts">
+import PuzzleGame from '~/components/PuzzleGame.vue'
 import type { QuestionType } from '~/types'
 import { getWeekKey } from '~/utils/week'
 
@@ -100,6 +128,10 @@ const uploadStatus = ref('')
 const uploadChoiceMade = ref(false)
 const storage = useStorage()
 
+// 拼图相关
+const puzzleRef = ref()
+const puzzleCompleted = ref(false)
+
 const timerEnabled = ref(false)
 const remaining = ref(30)
 let timerId: any = null
@@ -113,41 +145,13 @@ const correctCount = computed(() =>
   quiz.session.value ? quiz.session.value.records.filter(r => r.correct).length : 0
 )
 
-// 恢复未完成的答题进度
-onMounted(async () => {
-  const saved = storage.get<{ questions: any[]; currentIndex: number; category?: string }>('quizSession')
-  const currentCategory = route.query.cat as string
-  // 只有当保存的分类与当前请求的分类一致时才恢复
-  if (saved && saved.questions && saved.questions.length > 0 && saved.category === currentCategory) {
-    quiz.questions.value = saved.questions
-    quiz.currentIndex.value = saved.currentIndex
-    loading.value = false
-    return
-  }
-  // 没有或分类不一致则重新加载
-  loading.value = true
-  const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
-  loading.value = false
-  if (!res || res.code !== 0) {
-    loadError.value = res.message || '题目加载失败'
-  }
-})
-
-// 每次切换题目时保存进度
-watch(
-  () => quiz.currentIndex.value,
-  () => {
-    if (quiz.questions.value.length > 0 && !quiz.finished.value) {
-      storage.set('quizSession', {
-        questions: quiz.questions.value,
-        currentIndex: quiz.currentIndex.value,
-        category: route.query.cat as string
-      })
-    }
-  }
-)
-
 const selectedOpt = ref<string | null>(null)
+
+// 拼图完成回调
+function onPuzzleComplete() {
+  puzzleCompleted.value = true
+  // 可以在这里加一个成功提示
+}
 
 function optClass(opt: string) {
   if (!answered.value) return selectedOpt.value === opt ? 'selected' : ''
@@ -164,6 +168,17 @@ function optClass(opt: string) {
 }
 
 function chooseOption(opt: string) {
+  // 拼图题需要先完成拼图
+  if (quiz.current.value?.puzzleImage && !puzzleCompleted.value) {
+    // Toast 提示
+    const toast = document.createElement('div')
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:1rem 1.5rem;border-radius:8px;z-index:9999;font-size:14px'
+    toast.textContent = '🧩 请先完成拼图再答题！'
+    document.body.appendChild(toast)
+    setTimeout(() => toast.remove(), 2000)
+    return
+  }
+
   if (answered.value) return
   selectedOpt.value = opt
   const q = quiz.current.value
@@ -177,6 +192,16 @@ function chooseOption(opt: string) {
 }
 
 function submitBlank() {
+  // 拼图题需要先完成拼图
+  if (quiz.current.value?.puzzleImage && !puzzleCompleted.value) {
+    const toast = document.createElement('div')
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:#fff;padding:1rem 1.5rem;border-radius:8px;z-index:9999;font-size:14px'
+    toast.textContent = '🧩 请先完成拼图再答题！'
+    document.body.appendChild(toast)
+    setTimeout(() => toast.remove(), 2000)
+    return
+  }
+
   const rec = quiz.submitAnswer(blankInput.value)
   lastCorrect.value = !!rec?.correct
   answered.value = true
@@ -187,6 +212,7 @@ function nextQuestion() {
   answered.value = false
   selectedOpt.value = null
   blankInput.value = ''
+  puzzleCompleted.value = false // 重置拼图状态
   quiz.next()
   if (quiz.finished.value) {
     stopTimer()
@@ -279,6 +305,7 @@ async function restart() {
   uploadStatus.value = ''
   uploadChoiceMade.value = false
   loadError.value = ''
+  puzzleCompleted.value = false
   loading.value = true
   const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
   if (res.code !== 0) {
@@ -289,7 +316,22 @@ async function restart() {
 }
 
 onMounted(async () => {
+  // 先尝试恢复进度
+  const saved = storage.get<{ questions: any[]; currentIndex: number; category?: string }>('quizSession')
+  const currentCategory = route.query.cat as string
+  
   await auth.fetchMe()
+  
+  // 只有当保存的分类与当前请求的分类一致时才恢复
+  if (saved && saved.questions && saved.questions.length > 0 && saved.category === currentCategory) {
+    quiz.questions.value = saved.questions
+    quiz.currentIndex.value = saved.currentIndex
+    loading.value = false
+    startTimer()
+    return
+  }
+  
+  // 没有或分类不一致则重新加载
   const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
   if (res.code !== 0) {
     loadError.value = res.message || '题目加载失败'
@@ -297,7 +339,50 @@ onMounted(async () => {
   loading.value = false
   startTimer()
 })
+
 onBeforeUnmount(stopTimer)
+
+// 每次切换题目时保存进度
+watch(
+  () => quiz.currentIndex.value,
+  () => {
+    if (quiz.questions.value.length > 0 && !quiz.finished.value) {
+      storage.set('quizSession', {
+        questions: quiz.questions.value,
+        currentIndex: quiz.currentIndex.value,
+        category: route.query.cat as string
+      })
+    }
+  }
+)
 
 watch(timerEnabled, (v) => { if (v && !answered.value) startTimer(); else stopTimer() })
 </script>
+
+<style scoped>
+.blurred {
+  filter: blur(8px);
+  user-select: none;
+  pointer-events: none;
+}
+
+.puzzle-mask {
+  text-align: center;
+  padding: 1rem;
+  color: #8b1e2b;
+  font-weight: 500;
+  background: rgba(139, 30, 43, 0.05);
+  border-radius: 8px;
+  margin: 0.5rem 0;
+}
+
+.options.disabled .opt {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.disabled .input {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>
