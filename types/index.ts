@@ -24,6 +24,7 @@ export interface QuestionCategoryInfo {
 export interface AnswerRecord {
   questionId: string
   category: QuestionCategory
+  type: QuestionType       // 题目类型（单选/判断/填空）
   userAnswer: string
   correct: boolean
   scoreGained: number

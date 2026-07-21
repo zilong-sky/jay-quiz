@@ -39,6 +39,7 @@ export const useQuiz = () => {
     const record: AnswerRecord = {
       questionId: q.id,
       category: q.category,
+      type: q.type,
       userAnswer,
       correct,
       scoreGained,

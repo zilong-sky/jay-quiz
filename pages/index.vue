@@ -1,10 +1,15 @@
 <template>
   <section>
     <!-- 粉丝等级大徽章 -->
-    <div class="level-badge" v-if="myLevel">
+    <div class="level-badge">
       <div class="level-icon">🎖️</div>
-      <div class="level-text">{{ myLevel }}</div>
-      <div class="level-label">本周粉丝等级</div>
+      <div class="level-text">{{ levelDetail.level }}</div>
+      <div class="level-label" v-if="levelDetail.total > 0">
+        最近 {{ levelDetail.total }} 题 · 正确率 {{ levelDetail.accuracy }}%
+      </div>
+      <div class="level-label" v-else>
+        快去答题解锁你的粉丝等级
+      </div>
     </div>
 
     <h2 class="title-brush" style="margin-top:1.5rem">🎧 哥哥的世界，等你来答</h2>
@@ -47,24 +52,21 @@
 </template>
 
 <script setup lang="ts">
-import { getWeekKey } from '~/utils/week'
-import { calcLevel } from '~/utils/level'
+import type { FanLevel } from '~/types'
+import { getLevelDetail } from '~/utils/level'
 
 const rulesShow = ref(false)
 const showModeSelect = ref(false)
 const auth = useAuth()
 const router = useRouter()
+const record = useMyRecord()
 
-// 获取本周本地最高分计算粉丝等级
-const myLevel = ref('')
-const localBest = useStorage().get<{ score: number; costMs: number; week: string }>('localBestScore')
-const currentWeek = getWeekKey()
-
-if (localBest && localBest.week === currentWeek) {
-  myLevel.value = calcLevel(localBest.score)
-} else {
-  myLevel.value = '新晋粉丝'
-}
+// 获取本周本地最高分计算粉丝等级（加权算法）
+const levelDetail = ref({ level: '路人粉' as FanLevel, correct: 0, total: 0, accuracy: 0 })
+onMounted(() => {
+  const allRecords = record.all().flatMap(s => s.records)
+  levelDetail.value = getLevelDetail(allRecords)
+})
 
 function goRanking() {
   if (!auth.isLoggedIn.value) {
