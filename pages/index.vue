@@ -1,14 +1,15 @@
 <template>
   <section>
     <!-- 粉丝等级大徽章 -->
-    <div class="level-badge">
-      <div class="level-icon">🎖️</div>
-      <div class="level-text">{{ levelDetail.level }}</div>
-      <div class="level-label" v-if="levelDetail.total > 0">
+    <div class="level-badge" :class="{ locked: levelDetail.total < 50 }" @click="levelDetail.total < 50 && (showModeSelect = true)">
+      <div class="level-icon">{{ levelDetail.total >= 50 ? '🎖️' : '🔒' }}</div>
+      <div class="level-text">{{ levelDetail.total >= 50 ? levelDetail.level : '等级待解锁' }}</div>
+      <div class="level-label" v-if="levelDetail.total >= 50">
         最近 {{ levelDetail.total }} 题 · 正确率 {{ levelDetail.accuracy }}%
       </div>
       <div class="level-label" v-else>
-        快去答题解锁你的粉丝等级
+        再答 {{ 50 - levelDetail.total }} 题即可揭晓你的粉丝身份
+        <div class="unlock-hint">👆 点击开始答题</div>
       </div>
     </div>
 
@@ -90,6 +91,18 @@ function startQuiz(category: string) {
   border-radius: 16px;
   color: #fff;
   box-shadow: 0 8px 32px rgba(139, 30, 43, 0.3);
+  cursor: default;
+  transition: all 0.3s;
+}
+.level-badge.locked {
+  background: linear-gradient(135deg, #666 0%, #888 50%, #666 100%);
+  cursor: pointer;
+  opacity: 0.85;
+}
+.level-badge.locked:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
 }
 .level-icon {
   font-size: 4rem;
@@ -106,6 +119,16 @@ function startQuiz(category: string) {
   font-size: 1rem;
   opacity: 0.85;
   margin-top: 0.5rem;
+}
+.unlock-hint {
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+  opacity: 0.9;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 .mode-list {
   display: flex;
