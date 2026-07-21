@@ -24,14 +24,13 @@ export default defineNuxtConfig({
     }
   },
   nitro: {
-    // 服务端 KV：默认使用 fs（本地开发 & Vercel dev）；生产可接入 Vercel KV / Redis
+    // 服务端 KV：本地 fs，生产 Vercel KV
     storage: {
       db: {
-        driver: 'fs',
-        base: './.data/db'
+        driver: 'vercelKV'
       }
     },
     // Vercel 部署预设
-    preset: process.env.NITRO_PRESET || undefined
+    preset: process.env.NITRO_PRESET || 'vercel'
   }
 })

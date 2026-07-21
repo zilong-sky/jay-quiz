@@ -1,9 +1,12 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": ".output/public",
+  "outputDirectory": ".output",
   "framework": "nuxtjs",
   "installCommand": "npm install",
-  "env": {
-    "NITRO_PRESET": "vercel"
-  }
+  "crons": [
+    {
+      "path": "/api/cron/reset-ranking",
+      "schedule": "0 0 * * 1"
+    }
+  ]
 }
