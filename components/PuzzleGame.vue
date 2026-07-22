@@ -1,24 +1,26 @@
 <template>
   <div class="puzzle-container" :class="{ completed: isCompleted }">
-    <div class="puzzle-grid">
+    <div class="puzzle-grid" ref="gridRef">
       <div
         v-for="(tile, idx) in tiles"
         :key="idx"
         class="puzzle-tile"
         :class="{
-          selected: selectedTile === idx,
-          'swap-hint': selectedTile !== null && selectedTile !== idx
+          dragging: draggingTile === idx,
+          'drop-target': dropTarget === idx && draggingTile !== null && draggingTile !== idx
         }"
-        :style="tileStyle(tile)"
-        @click="onClick(idx)"
+        :style="[
+          tileStyle(tile),
+          draggingTile === idx ? dragStyle : {}
+        ]"
+        @mousedown.stop.prevent="onDragStart($event, idx)"
         @touchstart.stop.prevent="onTouchStart($event, idx)"
-        @touchend.stop.prevent="onTouchEnd(idx)"
       >
         <div class="tile-number">{{ tile + 1 }}</div>
       </div>
     </div>
     <div v-if="!isCompleted" class="puzzle-hint">
-      🧩 <b>先点一块，再点另一块交换位置</b>！还剩 {{ shuffleCount }} 次重新打乱
+      🧩 <b>拖动任意方块到目标位置交换</b>！还剩 {{ shuffleCount }} 次重新打乱
       <button v-if="shuffleCount > 0" class="btn tiny" @click="shuffle">再打乱</button>
     </div>
     <div v-else class="puzzle-success">✅ 拼图完成！可以答题了</div>
@@ -26,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps<{
   imageUrl: string
@@ -42,20 +44,28 @@ const rows = props.rows || 4
 const cols = props.cols || 4
 const totalTiles = rows * cols
 
-// 拼图状态：每个格子放的是原图片的位置索引（0-15）
+// 拼图状态
 const tiles = ref<number[]>([])
 const shuffleCount = ref(3)
 const isCompleted = ref(false)
-const selectedTile = ref<number | null>(null)
+
+// 拖拽状态
+const gridRef = ref<HTMLElement | null>(null)
+const draggingTile = ref<number | null>(null)
+const dropTarget = ref<number | null>(null)
+const startPos = ref({ x: 0, y: 0 })
+const dragOffset = ref({ x: 0, y: 0 })
+const dragStyle = ref({ transform: '', zIndex: '100', opacity: '0.9' })
 
 // 初始化有序拼图
 function init() {
   tiles.value = Array.from({ length: totalTiles }, (_, i) => i)
   isCompleted.value = false
-  selectedTile.value = null
+  draggingTile.value = null
+  dropTarget.value = null
 }
 
-// 单个方块的样式（根据原始位置显示对应的图片部分）
+// 单个方块的样式
 function tileStyle(tileIdx: number) {
   const row = Math.floor(tileIdx / cols)
   const col = tileIdx % cols
@@ -66,44 +76,127 @@ function tileStyle(tileIdx: number) {
   }
 }
 
-// 点击交换
-function onClick(idx: number) {
-  if (isCompleted.value) return
-  
-  // 第一次点击：选中
-  if (selectedTile.value === null) {
-    selectedTile.value = idx
-    return
+// 获取方块尺寸
+function getTileSize() {
+  if (!gridRef.value) return { width: 80, height: 80 }
+  const grid = gridRef.value as HTMLElement
+  const firstTile = grid.children[0] as HTMLElement
+  if (!firstTile) return { width: 80, height: 80 }
+  return {
+    width: firstTile.offsetWidth + 2, // + gap
+    height: firstTile.offsetHeight + 2
   }
-  
-  // 点击同一个：取消选中
-  if (selectedTile.value === idx) {
-    selectedTile.value = null
-    return
-  }
-  
-  // 点击另一个：交换
-  swap(selectedTile.value, idx)
-  selectedTile.value = null
 }
 
-// 触摸支持
+// 根据坐标找到目标方块索引
+function findTargetIdx(clientX: number, clientY: number): number | null {
+  if (!gridRef.value) return null
+  
+  const grid = gridRef.value as HTMLElement
+  const rect = grid.getBoundingClientRect()
+  const { width, height } = getTileSize()
+  
+  const x = clientX - rect.left
+  const y = clientY - rect.top
+  
+  const col = Math.floor(x / width)
+  const row = Math.floor(y / height)
+  
+  if (col < 0 || col >= cols || row < 0 || row >= rows) return null
+  
+  return row * cols + col
+}
+
+// ========== 桌面端拖拽 ==========
+function onDragStart(e: MouseEvent, idx: number) {
+  if (isCompleted.value) return
+  
+  draggingTile.value = idx
+  startPos = { x: e.clientX, y: e.clientY }
+  dragOffset = { x: 0, y: 0 }
+  
+  const onMouseMove = (e: MouseEvent) => {
+    if (draggingTile.value === null) return
+    
+    dragOffset = {
+      x: e.clientX - startPos.x,
+      y: e.clientY - startPos.y
+    }
+    dragStyle.transform = `translate(${dragOffset.x}px, ${dragOffset.y}px)`
+    
+    // 实时检测目标位置
+    const target = findTargetIdx(e.clientX, e.clientY)
+    dropTarget.value = target !== draggingTile.value ? target : null
+  }
+  
+  const onMouseUp = (e: MouseEvent) => {
+    if (draggingTile.value !== null) {
+      const target = findTargetIdx(e.clientX, e.clientY)
+      if (target !== null && target !== draggingTile.value) {
+        swap(draggingTile.value, target)
+      }
+    }
+    cleanup()
+  }
+  
+  const cleanup = () => {
+    draggingTile.value = null
+    dropTarget.value = null
+    dragStyle.transform = ''
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+  }
+  
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+}
+
+// ========== 移动端触摸拖拽 ==========
 function onTouchStart(e: TouchEvent, idx: number) {
   if (isCompleted.value) return
-  // 先选中第一个
-  if (selectedTile.value === null) {
-    selectedTile.value = idx
-  }
-}
-
-function onTouchEnd(idx: number) {
-  if (isCompleted.value || selectedTile.value === null) return
   
-  // 松开的是另一个，就交换
-  if (selectedTile.value !== idx) {
-    swap(selectedTile.value, idx)
+  const touch = e.touches[0]
+  draggingTile.value = idx
+  startPos = { x: touch.clientX, y: touch.clientY }
+  dragOffset = { x: 0, y: 0 }
+  
+  const onTouchMove = (e: TouchEvent) => {
+    if (draggingTile.value === null) return
+    e.preventDefault()
+    
+    const touch = e.touches[0]
+    dragOffset = {
+      x: touch.clientX - startPos.x,
+      y: touch.clientY - startPos.y
+    }
+    dragStyle.transform = `translate(${dragOffset.x}px, ${dragOffset.y}px)`
+    
+    // 实时检测目标位置
+    const target = findTargetIdx(touch.clientX, touch.clientY)
+    dropTarget.value = target !== draggingTile.value ? target : null
   }
-  selectedTile.value = null
+  
+  const onTouchEnd = (e: TouchEvent) => {
+    if (draggingTile.value !== null) {
+      const touch = e.changedTouches[0]
+      const target = findTargetIdx(touch.clientX, touch.clientY)
+      if (target !== null && target !== draggingTile.value) {
+        swap(draggingTile.value, target)
+      }
+    }
+    cleanup()
+  }
+  
+  const cleanup = () => {
+    draggingTile.value = null
+    dropTarget.value = null
+    dragStyle.transform = ''
+    document.removeEventListener('touchmove', onTouchMove, { passive: false })
+    document.removeEventListener('touchend', onTouchEnd)
+  }
+  
+  document.addEventListener('touchmove', onTouchMove, { passive: false })
+  document.addEventListener('touchend', onTouchEnd)
 }
 
 // 交换两个位置
@@ -127,7 +220,7 @@ function checkComplete() {
 }
 
 // 打乱拼图
-function shuffle(steps = 50) {
+function shuffle(steps = 80) {
   if (shuffleCount.value <= 0) return
   shuffleCount.value--
   
@@ -152,7 +245,7 @@ function shuffle(steps = 50) {
       break
     }
   }
-  if (sorted) shuffle(10) // 如果还是有序，再打乱一次
+  if (sorted) shuffle(20)
 }
 
 // 暴露给父组件的方法
@@ -166,7 +259,7 @@ onMounted(() => {
   init()
   // 先让用户看一眼原图，再打乱
   setTimeout(() => {
-    shuffle(80)
+    shuffle(100)
   }, 1500)
 })
 </script>
@@ -187,31 +280,34 @@ onMounted(() => {
   background: rgba(0,0,0,0.1);
   padding: 4px;
   border-radius: 8px;
+  position: relative;
 }
 
 .puzzle-tile {
   aspect-ratio: 1;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: grab;
   position: relative;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.puzzle-tile:hover {
-  transform: scale(1.02);
+.puzzle-tile:active {
+  cursor: grabbing;
 }
 
-.puzzle-tile.selected {
-  transform: scale(0.95);
-  box-shadow: 0 0 0 3px #8b1e2b;
-  z-index: 10;
+.puzzle-tile.dragging {
+  transition: none;
+  z-index: 100;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
-.puzzle-tile.swap-hint:hover {
-  box-shadow: 0 0 0 2px rgba(139, 30, 43, 0.5);
+.puzzle-tile.drop-target {
+  outline: 3px dashed #8b1e2b;
+  outline-offset: -3px;
+  opacity: 0.7;
 }
 
 .tile-number {
