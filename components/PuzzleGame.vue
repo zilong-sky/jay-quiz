@@ -20,7 +20,7 @@
       </div>
     </div>
     <div v-if="!isCompleted" class="puzzle-hint">
-      🧩 滑动方块到空位完成拼图！还剩 {{ shuffleCount }} 次重新打乱
+      🧩 <span style="color:#8b1e2b">有阴影的方块可以滑动</span>到空位！还剩 {{ shuffleCount }} 次重新打乱
       <button v-if="shuffleCount > 0" class="btn tiny" @click="shuffle">再打乱</button>
     </div>
     <div v-else class="puzzle-success">✅ 拼图完成！可以答题了</div>
@@ -299,10 +299,19 @@ onMounted(() => {
 
 .puzzle-tile.drop-hint {
   cursor: grab;
+  box-shadow: 0 0 0 1px rgba(139, 30, 43, 0.3);
 }
 
-.puzzle-tile.drop-hint:active {
-  cursor: grabbing;
+.puzzle-tile.drop-hint::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 4px;
+  box-shadow: inset 0 0 8px rgba(139, 30, 43, 0.2);
+  pointer-events: none;
 }
 
 .tile-number {
