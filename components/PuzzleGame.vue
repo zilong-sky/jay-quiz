@@ -1,31 +1,26 @@
 <template>
   <div class="puzzle-container" :class="{ completed: isCompleted }">
-    <div class="puzzle-grid" @touchmove.prevent @touchend.prevent>
+    <div class="puzzle-grid">
       <div
         v-for="(tile, idx) in tiles"
         :key="idx"
         class="puzzle-tile"
         :class="{
           empty: tile === null,
-          dragging: draggingTile === idx,
-          'drop-target': dropTarget === idx && isAdjacent(draggingTile ?? -1, idx)
+          moving: movingTile === idx,
+          'drop-hint': isAdjacent(idx, emptyIndex)
         }"
         :style="tileStyle(tile)"
-        draggable="true"
-        @dragstart="onDragStart($event, idx)"
-        @dragover.prevent="onDragOver($event, idx)"
-        @dragleave="onDragLeave"
-        @drop="onDrop($event, idx)"
-        @dragend="onDragEnd"
-        @touchstart="onTouchStart($event, idx)"
-        @touchmove="onTouchMove($event, idx)"
-        @touchend="onTouchEnd"
+        @touchstart.stop.prevent="onTouchStart($event, idx)"
+        @touchmove.stop.prevent="onTouchMove($event, idx)"
+        @touchend.stop.prevent="onTouchEnd"
+        @mousedown.stop.prevent="onMouseDown($event, idx)"
       >
         <div v-if="tile !== null" class="tile-number">{{ tile + 1 }}</div>
       </div>
     </div>
     <div v-if="!isCompleted" class="puzzle-hint">
-      🧩 拖动方块完成拼图！还剩 {{ shuffleCount }} 次重新打乱
+      🧩 滑动方块到空位完成拼图！还剩 {{ shuffleCount }} 次重新打乱
       <button v-if="shuffleCount > 0" class="btn tiny" @click="shuffle">再打乱</button>
     </div>
     <div v-else class="puzzle-success">✅ 拼图完成！可以答题了</div>
@@ -33,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps<{
   imageUrl: string
@@ -54,10 +49,10 @@ const tiles = ref<(number | null)[]>([])
 const shuffleCount = ref(3)
 const isCompleted = ref(false)
 
-// 拖拽状态（桌面 + 移动端）
-const draggingTile = ref<number | null>(null)
-const dropTarget = ref<number | null>(null)
-const touchStartPos = ref<{ x: number; y: number } | null>(null)
+// 滑动状态
+const selectedTile = ref<number | null>(null)
+const movingTile = ref<number | null>(null)
+const startPos = ref<{ x: number; y: number } | null>(null)
 
 // 获取空位位置
 const emptyIndex = computed(() => tiles.value.findIndex(t => t === null))
@@ -95,104 +90,105 @@ function isAdjacent(idx: number, emptyIdx: number) {
   return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)
 }
 
-// ========== 桌面端拖拽 ==========
-function onDragStart(e: DragEvent, idx: number) {
-  if (tiles.value[idx] === null) {
-    e.preventDefault()
-    return
-  }
-  draggingTile.value = idx
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', String(idx))
-  }
-}
-
-function onDragOver(e: DragEvent, idx: number) {
-  if (draggingTile.value === null) return
-  // 只能拖到空位，且必须相邻
-  if (tiles.value[idx] === null && isAdjacent(draggingTile.value, idx)) {
-    e.preventDefault()
-    dropTarget.value = idx
-  }
-}
-
-function onDragLeave() {
-  dropTarget.value = null
-}
-
-function onDrop(e: DragEvent, idx: number) {
-  e.preventDefault()
-  if (draggingTile.value === null) return
+// 检查滑动方向是否正确
+function checkDirection(tileIdx: number, dx: number, dy: number): boolean {
+  const empty = emptyIndex.value
+  if (!isAdjacent(tileIdx, empty)) return false
   
-  // 只能放到空位，且必须相邻
-  if (tiles.value[idx] === null && isAdjacent(draggingTile.value, idx)) {
-    // 交换位置
-    tiles.value[idx] = tiles.value[draggingTile.value]
-    tiles.value[draggingTile.value] = null
+  const tileRow = Math.floor(tileIdx / cols)
+  const tileCol = tileIdx % cols
+  const emptyRow = Math.floor(empty / cols)
+  const emptyCol = empty % cols
+  
+  const threshold = 15 // 滑动阈值，像素
+  
+  // 空位在上方，需要向上滑
+  if (emptyRow < tileRow && dy < -threshold) return true
+  // 空位在下方，需要向下滑
+  if (emptyRow > tileRow && dy > threshold) return true
+  // 空位在左边，需要向左滑
+  if (emptyCol < tileCol && dx < -threshold) return true
+  // 空位在右边，需要向右滑
+  if (emptyCol > tileCol && dx > threshold) return true
+  
+  return false
+}
+
+// 执行移动
+function doMove(tileIdx: number) {
+  const empty = emptyIndex.value
+  if (!isAdjacent(tileIdx, empty)) return
+  
+  movingTile.value = tileIdx
+  
+  setTimeout(() => {
+    tiles.value[empty] = tiles.value[tileIdx]
+    tiles.value[tileIdx] = null
+    movingTile.value = null
     checkComplete()
-  }
-  
-  dropTarget.value = null
+  }, 100)
 }
 
-function onDragEnd() {
-  draggingTile.value = null
-  dropTarget.value = null
-}
-
-// ========== 移动端触摸拖拽 ==========
+// ========== 移动端触摸 ==========
 function onTouchStart(e: TouchEvent, idx: number) {
   if (tiles.value[idx] === null) return
   
   const touch = e.touches[0]
-  touchStartPos.value = { x: touch.clientX, y: touch.clientY }
-  draggingTile.value = idx
+  startPos.value = { x: touch.clientX, y: touch.clientY }
+  selectedTile.value = idx
 }
 
 function onTouchMove(e: TouchEvent, idx: number) {
-  if (draggingTile.value === null || !touchStartPos.value) return
+  if (selectedTile.value === null || !startPos.value) return
   
   const touch = e.touches[0]
-  const dx = touch.clientX - touchStartPos.value.x
-  const dy = touch.clientY - touchStartPos.value.y
+  const dx = touch.clientX - startPos.value.x
+  const dy = touch.clientY - startPos.value.y
   
-  // 判断滑动方向，找到对应的相邻空位
-  const empty = emptyIndex.value
-  if (!isAdjacent(draggingTile.value, empty)) return
-  
-  const tileRow = Math.floor(draggingTile.value / cols)
-  const tileCol = draggingTile.value % cols
-  const emptyRow = Math.floor(empty / cols)
-  const emptyCol = empty % cols
-  
-  // 根据滑动方向和空位位置判断是否可移动
-  let canMove = false
-  if (emptyRow < tileRow && dy < -20) canMove = true // 向上滑，空位在上方
-  if (emptyRow > tileRow && dy > 20) canMove = true  // 向下滑，空位在下方
-  if (emptyCol < tileCol && dx < -20) canMove = true // 向左滑，空位在左边
-  if (emptyCol > tileCol && dx > 20) canMove = true  // 向右滑，空位在右边
-  
-  if (canMove) {
-    dropTarget.value = empty
-  } else {
-    dropTarget.value = null
+  // 检查方向是否正确，达到阈值就移动
+  if (checkDirection(selectedTile.value, dx, dy)) {
+    doMove(selectedTile.value)
+    selectedTile.value = null
+    startPos.value = null
   }
 }
 
-function onTouchEnd(e: TouchEvent) {
-  if (draggingTile.value === null) return
+function onTouchEnd() {
+  selectedTile.value = null
+  startPos.value = null
+}
+
+// ========== 桌面端鼠标 ==========
+function onMouseDown(e: MouseEvent, idx: number) {
+  if (tiles.value[idx] === null) return
   
-  // 如果有有效的目标空位，执行移动
-  if (dropTarget.value !== null && isAdjacent(draggingTile.value, dropTarget.value)) {
-    tiles.value[dropTarget.value] = tiles.value[draggingTile.value]
-    tiles.value[draggingTile.value] = null
-    checkComplete()
+  startPos.value = { x: e.clientX, y: e.clientY }
+  selectedTile.value = idx
+  
+  const onMouseMove = (e: MouseEvent) => {
+    if (selectedTile.value === null || !startPos.value) return
+    const dx = e.clientX - startPos.value.x
+    const dy = e.clientY - startPos.value.y
+    
+    if (checkDirection(selectedTile.value, dx, dy)) {
+      doMove(selectedTile.value)
+      cleanup()
+    }
   }
   
-  draggingTile.value = null
-  dropTarget.value = null
-  touchStartPos.value = null
+  const onMouseUp = () => {
+    cleanup()
+  }
+  
+  const cleanup = () => {
+    selectedTile.value = null
+    startPos.value = null
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+  }
+  
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
 }
 
 // 检查拼图是否完成
@@ -260,7 +256,7 @@ onMounted(() => {
 .puzzle-container {
   margin: 1rem 0;
   text-align: center;
-  touch-action: none; /* 禁止页面滚动 */
+  touch-action: none;
 }
 
 .puzzle-grid {
@@ -278,9 +274,9 @@ onMounted(() => {
 .puzzle-tile {
   aspect-ratio: 1;
   border-radius: 4px;
-  cursor: grab;
+  cursor: pointer;
   position: relative;
-  transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.1s ease-out, opacity 0.1s ease;
   background: #eee;
   touch-action: none;
   user-select: none;
@@ -288,7 +284,7 @@ onMounted(() => {
 }
 
 .puzzle-tile:active {
-  cursor: grabbing;
+  transform: scale(0.98);
 }
 
 .puzzle-tile.empty {
@@ -296,16 +292,17 @@ onMounted(() => {
   cursor: default;
 }
 
-.puzzle-tile.dragging {
-  opacity: 0.6;
-  transform: scale(0.95);
-  z-index: 10;
+.puzzle-tile.moving {
+  opacity: 0.8;
+  transition: none;
 }
 
-.puzzle-tile.drop-target {
-  outline: 2px dashed #8b1e2b;
-  outline-offset: 2px;
-  background: rgba(139, 30, 43, 0.15);
+.puzzle-tile.drop-hint {
+  cursor: grab;
+}
+
+.puzzle-tile.drop-hint:active {
+  cursor: grabbing;
 }
 
 .tile-number {
