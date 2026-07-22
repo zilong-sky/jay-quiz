@@ -6,21 +6,19 @@
         :key="idx"
         class="puzzle-tile"
         :class="{
-          empty: tile === null,
-          moving: movingTile === idx,
-          'drop-hint': isAdjacent(idx, emptyIndex)
+          selected: selectedTile === idx,
+          'swap-hint': selectedTile !== null && selectedTile !== idx
         }"
         :style="tileStyle(tile)"
+        @click="onClick(idx)"
         @touchstart.stop.prevent="onTouchStart($event, idx)"
-        @touchmove.stop.prevent="onTouchMove($event, idx)"
-        @touchend.stop.prevent="onTouchEnd"
-        @mousedown.stop.prevent="onMouseDown($event, idx)"
+        @touchend.stop.prevent="onTouchEnd(idx)"
       >
-        <div v-if="tile !== null" class="tile-number">{{ tile + 1 }}</div>
+        <div class="tile-number">{{ tile + 1 }}</div>
       </div>
     </div>
     <div v-if="!isCompleted" class="puzzle-hint">
-      🧩 <span style="color:#8b1e2b">有阴影的方块可以滑动</span>到空位！还剩 {{ shuffleCount }} 次重新打乱
+      🧩 <b>先点一块，再点另一块交换位置</b>！还剩 {{ shuffleCount }} 次重新打乱
       <button v-if="shuffleCount > 0" class="btn tiny" @click="shuffle">再打乱</button>
     </div>
     <div v-else class="puzzle-success">✅ 拼图完成！可以答题了</div>
@@ -28,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const props = defineProps<{
   imageUrl: string
@@ -44,31 +42,23 @@ const rows = props.rows || 4
 const cols = props.cols || 4
 const totalTiles = rows * cols
 
-// 拼图状态：null 表示空位
-const tiles = ref<(number | null)[]>([])
+// 拼图状态：每个格子放的是原图片的位置索引（0-15）
+const tiles = ref<number[]>([])
 const shuffleCount = ref(3)
 const isCompleted = ref(false)
-
-// 滑动状态
 const selectedTile = ref<number | null>(null)
-const movingTile = ref<number | null>(null)
-const startPos = ref<{ x: number; y: number } | null>(null)
-
-// 获取空位位置
-const emptyIndex = computed(() => tiles.value.findIndex(t => t === null))
 
 // 初始化有序拼图
 function init() {
   tiles.value = Array.from({ length: totalTiles }, (_, i) => i)
-  tiles.value[totalTiles - 1] = null // 最后一个位置为空
   isCompleted.value = false
+  selectedTile.value = null
 }
 
-// 单个方块的样式
-function tileStyle(tile: number | null) {
-  if (tile === null) return {}
-  const row = Math.floor(tile / cols)
-  const col = tile % cols
+// 单个方块的样式（根据原始位置显示对应的图片部分）
+function tileStyle(tileIdx: number) {
+  const row = Math.floor(tileIdx / cols)
+  const col = tileIdx % cols
   return {
     backgroundImage: `url(${props.imageUrl})`,
     backgroundSize: `${cols * 100}% ${rows * 100}%`,
@@ -76,164 +66,93 @@ function tileStyle(tile: number | null) {
   }
 }
 
-// 检查是否相邻
-function isAdjacent(idx: number, emptyIdx: number) {
-  if (emptyIdx === -1 || idx === -1 || tiles.value[idx] === null) return false
-  const idxRow = Math.floor(idx / cols)
-  const idxCol = idx % cols
-  const emptyRow = Math.floor(emptyIdx / cols)
-  const emptyCol = emptyIdx % cols
+// 点击交换
+function onClick(idx: number) {
+  if (isCompleted.value) return
   
-  // 上下左右相邻
-  const rowDiff = Math.abs(idxRow - emptyRow)
-  const colDiff = Math.abs(idxCol - emptyCol)
-  return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1)
-}
-
-// 检查滑动方向是否正确
-function checkDirection(tileIdx: number, dx: number, dy: number): boolean {
-  const empty = emptyIndex.value
-  if (!isAdjacent(tileIdx, empty)) return false
-  
-  const tileRow = Math.floor(tileIdx / cols)
-  const tileCol = tileIdx % cols
-  const emptyRow = Math.floor(empty / cols)
-  const emptyCol = empty % cols
-  
-  const threshold = 15 // 滑动阈值，像素
-  
-  // 空位在上方，需要向上滑
-  if (emptyRow < tileRow && dy < -threshold) return true
-  // 空位在下方，需要向下滑
-  if (emptyRow > tileRow && dy > threshold) return true
-  // 空位在左边，需要向左滑
-  if (emptyCol < tileCol && dx < -threshold) return true
-  // 空位在右边，需要向右滑
-  if (emptyCol > tileCol && dx > threshold) return true
-  
-  return false
-}
-
-// 执行移动
-function doMove(tileIdx: number) {
-  const empty = emptyIndex.value
-  if (!isAdjacent(tileIdx, empty)) return
-  
-  movingTile.value = tileIdx
-  
-  setTimeout(() => {
-    tiles.value[empty] = tiles.value[tileIdx]
-    tiles.value[tileIdx] = null
-    movingTile.value = null
-    checkComplete()
-  }, 100)
-}
-
-// ========== 移动端触摸 ==========
-function onTouchStart(e: TouchEvent, idx: number) {
-  if (tiles.value[idx] === null) return
-  
-  const touch = e.touches[0]
-  startPos.value = { x: touch.clientX, y: touch.clientY }
-  selectedTile.value = idx
-}
-
-function onTouchMove(e: TouchEvent, idx: number) {
-  if (selectedTile.value === null || !startPos.value) return
-  
-  const touch = e.touches[0]
-  const dx = touch.clientX - startPos.value.x
-  const dy = touch.clientY - startPos.value.y
-  
-  // 检查方向是否正确，达到阈值就移动
-  if (checkDirection(selectedTile.value, dx, dy)) {
-    doMove(selectedTile.value)
-    selectedTile.value = null
-    startPos.value = null
+  // 第一次点击：选中
+  if (selectedTile.value === null) {
+    selectedTile.value = idx
+    return
   }
-}
-
-function onTouchEnd() {
+  
+  // 点击同一个：取消选中
+  if (selectedTile.value === idx) {
+    selectedTile.value = null
+    return
+  }
+  
+  // 点击另一个：交换
+  swap(selectedTile.value, idx)
   selectedTile.value = null
-  startPos.value = null
 }
 
-// ========== 桌面端鼠标 ==========
-function onMouseDown(e: MouseEvent, idx: number) {
-  if (tiles.value[idx] === null) return
-  
-  startPos.value = { x: e.clientX, y: e.clientY }
-  selectedTile.value = idx
-  
-  const onMouseMove = (e: MouseEvent) => {
-    if (selectedTile.value === null || !startPos.value) return
-    const dx = e.clientX - startPos.value.x
-    const dy = e.clientY - startPos.value.y
-    
-    if (checkDirection(selectedTile.value, dx, dy)) {
-      doMove(selectedTile.value)
-      cleanup()
-    }
+// 触摸支持
+function onTouchStart(e: TouchEvent, idx: number) {
+  if (isCompleted.value) return
+  // 先选中第一个
+  if (selectedTile.value === null) {
+    selectedTile.value = idx
   }
+}
+
+function onTouchEnd(idx: number) {
+  if (isCompleted.value || selectedTile.value === null) return
   
-  const onMouseUp = () => {
-    cleanup()
+  // 松开的是另一个，就交换
+  if (selectedTile.value !== idx) {
+    swap(selectedTile.value, idx)
   }
+  selectedTile.value = null
+}
+
+// 交换两个位置
+function swap(i: number, j: number) {
+  const temp = tiles.value[i]
+  tiles.value[i] = tiles.value[j]
+  tiles.value[j] = temp
   
-  const cleanup = () => {
-    selectedTile.value = null
-    startPos.value = null
-    document.removeEventListener('mousemove', onMouseMove)
-    document.removeEventListener('mouseup', onMouseUp)
-  }
-  
-  document.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseup', onMouseUp)
+  checkComplete()
 }
 
 // 检查拼图是否完成
 function checkComplete() {
-  for (let i = 0; i < totalTiles - 1; i++) {
+  for (let i = 0; i < totalTiles; i++) {
     if (tiles.value[i] !== i) return false
   }
-  if (tiles.value[totalTiles - 1] !== null) return false
   
   isCompleted.value = true
   emit('complete')
   return true
 }
 
-// 打乱拼图（通过随机移动实现，保证有解）
-function shuffle(steps = 100) {
+// 打乱拼图
+function shuffle(steps = 50) {
   if (shuffleCount.value <= 0) return
   shuffleCount.value--
   
-  let lastIdx = -1
+  init()
+  
+  // 随机交换多次
   for (let i = 0; i < steps; i++) {
-    const empty = emptyIndex.value
-    const emptyRow = Math.floor(empty / cols)
-    const emptyCol = empty % cols
-    
-    // 找出所有可移动的相邻位置
-    const adjacent = []
-    if (emptyRow > 0) adjacent.push(empty - cols) // 上
-    if (emptyRow < rows - 1) adjacent.push(empty + cols) // 下
-    if (emptyCol > 0) adjacent.push(empty - 1) // 左
-    if (emptyCol < cols - 1) adjacent.push(empty + 1) // 右
-    
-    // 随机选一个（排除刚移动过来的，避免来回跳）
-    let candidates = adjacent.filter(idx => idx !== lastIdx)
-    if (candidates.length === 0) candidates = adjacent
-    
-    const randomIdx = candidates[Math.floor(Math.random() * candidates.length)]
-    lastIdx = empty
-    
-    // 移动
-    tiles.value[empty] = tiles.value[randomIdx]
-    tiles.value[randomIdx] = null
+    const a = Math.floor(Math.random() * totalTiles)
+    const b = Math.floor(Math.random() * totalTiles)
+    if (a !== b) {
+      const temp = tiles.value[a]
+      tiles.value[a] = tiles.value[b]
+      tiles.value[b] = temp
+    }
   }
   
-  isCompleted.value = false
+  // 确保打乱了
+  let sorted = true
+  for (let i = 0; i < totalTiles; i++) {
+    if (tiles.value[i] !== i) {
+      sorted = false
+      break
+    }
+  }
+  if (sorted) shuffle(10) // 如果还是有序，再打乱一次
 }
 
 // 暴露给父组件的方法
@@ -245,10 +164,10 @@ defineExpose({
 
 onMounted(() => {
   init()
-  // 延迟一会儿再打乱，让用户先看一眼原图
+  // 先让用户看一眼原图，再打乱
   setTimeout(() => {
-    shuffle(120)
-  }, 1200)
+    shuffle(80)
+  }, 1500)
 })
 </script>
 
@@ -268,7 +187,6 @@ onMounted(() => {
   background: rgba(0,0,0,0.1);
   padding: 4px;
   border-radius: 8px;
-  touch-action: none;
 }
 
 .puzzle-tile {
@@ -276,42 +194,24 @@ onMounted(() => {
   border-radius: 4px;
   cursor: pointer;
   position: relative;
-  transition: transform 0.1s ease-out, opacity 0.1s ease;
-  background: #eee;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.puzzle-tile:active {
-  transform: scale(0.98);
+.puzzle-tile:hover {
+  transform: scale(1.02);
 }
 
-.puzzle-tile.empty {
-  background: rgba(0,0,0,0.05);
-  cursor: default;
+.puzzle-tile.selected {
+  transform: scale(0.95);
+  box-shadow: 0 0 0 3px #8b1e2b;
+  z-index: 10;
 }
 
-.puzzle-tile.moving {
-  opacity: 0.8;
-  transition: none;
-}
-
-.puzzle-tile.drop-hint {
-  cursor: grab;
-  box-shadow: 0 0 0 1px rgba(139, 30, 43, 0.3);
-}
-
-.puzzle-tile.drop-hint::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 4px;
-  box-shadow: inset 0 0 8px rgba(139, 30, 43, 0.2);
-  pointer-events: none;
+.puzzle-tile.swap-hint:hover {
+  box-shadow: 0 0 0 2px rgba(139, 30, 43, 0.5);
 }
 
 .tile-number {
@@ -319,9 +219,10 @@ onMounted(() => {
   bottom: 2px;
   right: 4px;
   font-size: 10px;
-  color: rgba(255,255,255,0.7);
-  text-shadow: 0 0 2px rgba(0,0,0,0.5);
+  color: rgba(255,255,255,0.8);
+  text-shadow: 0 0 3px rgba(0,0,0,0.6);
   pointer-events: none;
+  font-weight: bold;
 }
 
 .puzzle-hint {
@@ -332,6 +233,11 @@ onMounted(() => {
   justify-content: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.puzzle-hint b {
+  color: #8b1e2b;
+  font-weight: 500;
 }
 
 .puzzle-success {
