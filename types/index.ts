@@ -5,16 +5,18 @@ export type QuestionType = 'single' | 'judge' | 'blank'
 
 export interface Question {
   id: string
+  sort: number                // 排序号
   category: QuestionCategory
   type: QuestionType
   content: string
-  options?: string[]          // 单选题 4 选项 / 判断题 ["正确","错误"]
-  answer: string              // 单选题存 A/B/C/D；判断题存 "正确"/"错误"；填空题存标准文本
-  explanation: string         // 知识点解析
-  score?: number              // 单题分值（默认 10）
-  puzzleImage?: string        // 拼图题图片地址，有值说明是拼图模式
+  options?: string[]          // 单选题 4 选项 / 判断题 2 选项
+  answer: string              // 正确答案
+  explanation: string         // 解析
+  puzzleImage?: string        // 拼图图片地址
+  puzzleEnabled: boolean      // 是否开启拼图模式
+  createdAt: number
+  updatedAt: number
 }
-
 export interface QuestionCategoryInfo {
   key: QuestionCategory
   label: string
