@@ -1,15 +1,22 @@
 <template>
   <section>
     <!-- 粉丝等级大徽章 -->
-    <div class="level-badge" :class="{ locked: levelDetail.total < 50 }" @click="levelDetail.total < 50 && (showModeSelect = true)">
-      <div class="level-icon">{{ levelDetail.total >= 50 ? '🎖️' : '🔒' }}</div>
-      <div class="level-text">{{ levelDetail.total >= 50 ? levelDetail.level : '等级待解锁' }}</div>
-      <div class="level-label" v-if="levelDetail.total >= 50">
+    <div class="level-badge" :class="{ locked: !auth.isLoggedIn.value || levelDetail.total < 50 }" 
+         @click="!auth.isLoggedIn.value ? goLogin() : (levelDetail.total < 50 && (showModeSelect = true))">
+      <div class="level-icon">{{ auth.isLoggedIn.value && levelDetail.total >= 50 ? '🎖️' : '🔒' }}</div>
+      <div class="level-text">
+        {{ !auth.isLoggedIn.value ? '登录解锁等级' : (levelDetail.total >= 50 ? levelDetail.level : '等级待解锁') }}
+      </div>
+      <div class="level-label" v-if="auth.isLoggedIn.value && levelDetail.total >= 50">
         最近 {{ levelDetail.total }} 题 · 正确率 {{ levelDetail.accuracy }}%
       </div>
-      <div class="level-label" v-else>
+      <div class="level-label" v-else-if="auth.isLoggedIn.value">
         再答 {{ 50 - levelDetail.total }} 题即可揭晓你的粉丝身份
         <div class="unlock-hint">👆 点击开始答题</div>
+      </div>
+      <div class="level-label" v-else>
+        登录后计算粉丝等级，查看你的排名
+        <div class="unlock-hint">👆 点击去登录</div>
       </div>
     </div>
 
@@ -65,8 +72,11 @@ const record = useMyRecord()
 // 获取本周本地最高分计算粉丝等级（加权算法）
 const levelDetail = ref({ level: '路人粉' as FanLevel, correct: 0, total: 0, accuracy: 0 })
 onMounted(() => {
-  const allRecords = record.all().flatMap(s => s.records)
-  levelDetail.value = getLevelDetail(allRecords)
+  // 只有登录了才显示等级详情
+  if (auth.isLoggedIn.value) {
+    const allRecords = record.all().flatMap(s => s.records)
+    levelDetail.value = getLevelDetail(allRecords)
+  }
 })
 
 function goRanking() {
@@ -75,6 +85,10 @@ function goRanking() {
     return
   }
   router.push('/ranking')
+}
+
+function goLogin() {
+  router.push('/login?redirect=/')
 }
 
 function startQuiz(category: string) {
