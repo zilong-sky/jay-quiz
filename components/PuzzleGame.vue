@@ -9,18 +9,15 @@
           dragging: draggingTile === idx,
           'drop-target': dropTarget === idx && draggingTile !== null && draggingTile !== idx
         }"
-        :style="[
-          tileStyle(tile),
-          draggingTile === idx ? dragStyle : {}
-        ]"
-        @mousedown.stop.prevent="onDragStart($event, idx)"
-        @touchstart.stop.prevent="onTouchStart($event, idx)"
+        :style="getTileStyle(idx, tile)"
+        @mousedown.stop="startDrag($event, idx)"
+        @touchstart.stop.prevent="startTouch($event, idx)"
       >
         <div class="tile-number">{{ tile + 1 }}</div>
       </div>
     </div>
     <div v-if="!isCompleted" class="puzzle-hint">
-      🧩 <b>拖动任意方块到目标位置交换</b>！还剩 {{ shuffleCount }} 次重新打乱
+      🧩 <b>按住方块拖到目标位置交换</b>！还剩 {{ shuffleCount }} 次重新打乱
       <button v-if="shuffleCount > 0" class="btn tiny" @click="shuffle">再打乱</button>
     </div>
     <div v-else class="puzzle-success">✅ 拼图完成！可以答题了</div>
@@ -28,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 
 const props = defineProps<{
   imageUrl: string
@@ -53,150 +50,154 @@ const isCompleted = ref(false)
 const gridRef = ref<HTMLElement | null>(null)
 const draggingTile = ref<number | null>(null)
 const dropTarget = ref<number | null>(null)
-const startPos = ref({ x: 0, y: 0 })
-const dragOffset = ref({ x: 0, y: 0 })
-const dragStyle = ref({ transform: '', zIndex: '100', opacity: '0.9' })
 
-// 初始化有序拼图
-function init() {
-  tiles.value = Array.from({ length: totalTiles }, (_, i) => i)
-  isCompleted.value = false
-  draggingTile.value = null
-  dropTarget.value = null
-}
+// 拖拽偏移
+const dragX = ref(0)
+const dragY = ref(0)
+const startX = ref(0)
+const startY = ref(0)
 
-// 单个方块的样式
-function tileStyle(tileIdx: number) {
+// 方块位置缓存
+const tileRects = ref<DOMRect[]>([])
+
+// 计算每个方块的样式
+function getTileStyle(idx: number, tileIdx: number) {
   const row = Math.floor(tileIdx / cols)
   const col = tileIdx % cols
-  return {
+  
+  const baseStyle = {
     backgroundImage: `url(${props.imageUrl})`,
     backgroundSize: `${cols * 100}% ${rows * 100}%`,
     backgroundPosition: `${col * 100 / (cols - 1)}% ${row * 100 / (rows - 1)}%`
   }
-}
-
-// 获取方块尺寸
-function getTileSize() {
-  if (!gridRef.value) return { width: 80, height: 80 }
-  const grid = gridRef.value as HTMLElement
-  const firstTile = grid.children[0] as HTMLElement
-  if (!firstTile) return { width: 80, height: 80 }
-  return {
-    width: firstTile.offsetWidth + 2, // + gap
-    height: firstTile.offsetHeight + 2
+  
+  if (draggingTile.value === idx) {
+    return {
+      ...baseStyle,
+      transform: `translate(${dragX.value}px, ${dragY.value}px)`,
+      zIndex: '100',
+      opacity: '0.9'
+    }
   }
+  
+  return baseStyle
 }
 
-// 根据坐标找到目标方块索引
-function findTargetIdx(clientX: number, clientY: number): number | null {
-  if (!gridRef.value) return null
-  
-  const grid = gridRef.value as HTMLElement
-  const rect = grid.getBoundingClientRect()
-  const { width, height } = getTileSize()
-  
-  const x = clientX - rect.left
-  const y = clientY - rect.top
-  
-  const col = Math.floor(x / width)
-  const row = Math.floor(y / height)
-  
-  if (col < 0 || col >= cols || row < 0 || row >= rows) return null
-  
-  return row * cols + col
+// 缓存所有方块的位置
+function cacheTileRects() {
+  if (!gridRef.value) return
+  const children = Array.from(gridRef.value.children) as HTMLElement[]
+  tileRects.value = children.map(el => el.getBoundingClientRect())
+}
+
+// 根据坐标找到目标方块
+function findTarget(clientX: number, clientY: number): number | null {
+  for (let i = 0; i < tileRects.value.length; i++) {
+    const rect = tileRects.value[i]
+    if (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    ) {
+      return i
+    }
+  }
+  return null
 }
 
 // ========== 桌面端拖拽 ==========
-function onDragStart(e: MouseEvent, idx: number) {
+function startDrag(e: MouseEvent, idx: number) {
   if (isCompleted.value) return
   
   draggingTile.value = idx
-  startPos = { x: e.clientX, y: e.clientY }
-  dragOffset = { x: 0, y: 0 }
+  startX.value = e.clientX
+  startY.value = e.clientY
+  dragX.value = 0
+  dragY.value = 0
   
-  const onMouseMove = (e: MouseEvent) => {
+  nextTick(() => {
+    cacheTileRects()
+  })
+  
+  const onMove = (e: MouseEvent) => {
     if (draggingTile.value === null) return
     
-    dragOffset = {
-      x: e.clientX - startPos.x,
-      y: e.clientY - startPos.y
-    }
-    dragStyle.transform = `translate(${dragOffset.x}px, ${dragOffset.y}px)`
+    dragX.value = e.clientX - startX.value
+    dragY.value = e.clientY - startY.value
     
-    // 实时检测目标位置
-    const target = findTargetIdx(e.clientX, e.clientY)
+    const target = findTarget(e.clientX, e.clientY)
     dropTarget.value = target !== draggingTile.value ? target : null
   }
   
-  const onMouseUp = (e: MouseEvent) => {
-    if (draggingTile.value !== null) {
-      const target = findTargetIdx(e.clientX, e.clientY)
-      if (target !== null && target !== draggingTile.value) {
-        swap(draggingTile.value, target)
-      }
+  const onUp = (e: MouseEvent) => {
+    const target = findTarget(e.clientX, e.clientY)
+    if (target !== null && target !== draggingTile.value && draggingTile.value !== null) {
+      swap(draggingTile.value, target)
     }
-    cleanup()
+    endDrag()
   }
   
-  const cleanup = () => {
+  const endDrag = () => {
     draggingTile.value = null
     dropTarget.value = null
-    dragStyle.transform = ''
-    document.removeEventListener('mousemove', onMouseMove)
-    document.removeEventListener('mouseup', onMouseUp)
+    dragX.value = 0
+    dragY.value = 0
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
   }
   
-  document.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseup', onMouseUp)
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
 }
 
 // ========== 移动端触摸拖拽 ==========
-function onTouchStart(e: TouchEvent, idx: number) {
+function startTouch(e: TouchEvent, idx: number) {
   if (isCompleted.value) return
   
   const touch = e.touches[0]
   draggingTile.value = idx
-  startPos = { x: touch.clientX, y: touch.clientY }
-  dragOffset = { x: 0, y: 0 }
+  startX.value = touch.clientX
+  startY.value = touch.clientY
+  dragX.value = 0
+  dragY.value = 0
   
-  const onTouchMove = (e: TouchEvent) => {
+  nextTick(() => {
+    cacheTileRects()
+  })
+  
+  const onMove = (e: TouchEvent) => {
     if (draggingTile.value === null) return
     e.preventDefault()
     
     const touch = e.touches[0]
-    dragOffset = {
-      x: touch.clientX - startPos.x,
-      y: touch.clientY - startPos.y
-    }
-    dragStyle.transform = `translate(${dragOffset.x}px, ${dragOffset.y}px)`
+    dragX.value = touch.clientX - startX.value
+    dragY.value = touch.clientY - startY.value
     
-    // 实时检测目标位置
-    const target = findTargetIdx(touch.clientX, touch.clientY)
+    const target = findTarget(touch.clientX, touch.clientY)
     dropTarget.value = target !== draggingTile.value ? target : null
   }
   
-  const onTouchEnd = (e: TouchEvent) => {
-    if (draggingTile.value !== null) {
-      const touch = e.changedTouches[0]
-      const target = findTargetIdx(touch.clientX, touch.clientY)
-      if (target !== null && target !== draggingTile.value) {
-        swap(draggingTile.value, target)
-      }
+  const onEnd = (e: TouchEvent) => {
+    const touch = e.changedTouches[0]
+    const target = findTarget(touch.clientX, touch.clientY)
+    if (target !== null && target !== draggingTile.value && draggingTile.value !== null) {
+      swap(draggingTile.value, target)
     }
-    cleanup()
+    endDrag()
   }
   
-  const cleanup = () => {
+  const endDrag = () => {
     draggingTile.value = null
     dropTarget.value = null
-    dragStyle.transform = ''
-    document.removeEventListener('touchmove', onTouchMove, { passive: false })
-    document.removeEventListener('touchend', onTouchEnd)
+    dragX.value = 0
+    dragY.value = 0
+    document.removeEventListener('touchmove', onMove)
+    document.removeEventListener('touchend', onEnd)
   }
   
-  document.addEventListener('touchmove', onTouchMove, { passive: false })
-  document.addEventListener('touchend', onTouchEnd)
+  document.addEventListener('touchmove', onMove, { passive: false })
+  document.addEventListener('touchend', onEnd)
 }
 
 // 交换两个位置
@@ -204,6 +205,9 @@ function swap(i: number, j: number) {
   const temp = tiles.value[i]
   tiles.value[i] = tiles.value[j]
   tiles.value[j] = temp
+  
+  // 交换后重新缓存位置
+  nextTick(() => cacheTileRects())
   
   checkComplete()
 }
@@ -248,6 +252,13 @@ function shuffle(steps = 80) {
   if (sorted) shuffle(20)
 }
 
+function init() {
+  tiles.value = Array.from({ length: totalTiles }, (_, i) => i)
+  isCompleted.value = false
+  draggingTile.value = null
+  dropTarget.value = null
+}
+
 // 暴露给父组件的方法
 defineExpose({
   isCompleted,
@@ -257,10 +268,10 @@ defineExpose({
 
 onMounted(() => {
   init()
-  // 先让用户看一眼原图，再打乱
   setTimeout(() => {
+    cacheTileRects()
     shuffle(100)
-  }, 1500)
+  }, 500)
 })
 </script>
 
@@ -280,7 +291,6 @@ onMounted(() => {
   background: rgba(0,0,0,0.1);
   padding: 4px;
   border-radius: 8px;
-  position: relative;
 }
 
 .puzzle-tile {
@@ -288,10 +298,11 @@ onMounted(() => {
   border-radius: 4px;
   cursor: grab;
   position: relative;
-  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+  transition: box-shadow 0.1s ease, opacity 0.1s ease;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  will-change: transform;
 }
 
 .puzzle-tile:active {
@@ -300,14 +311,13 @@ onMounted(() => {
 
 .puzzle-tile.dragging {
   transition: none;
-  z-index: 100;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.35);
 }
 
 .puzzle-tile.drop-target {
   outline: 3px dashed #8b1e2b;
   outline-offset: -3px;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 .tile-number {
