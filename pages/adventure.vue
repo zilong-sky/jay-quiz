@@ -10,14 +10,17 @@
         <p style="margin-bottom:.5rem">
           冒险模式规则：
         </p>
-        <ul style="text-align:left;margin-bottom:1.5rem;color:#606266">
+        <ul style="text-align:left;margin-bottom:1rem;color:#606266">
           <li>共 100 道题，限时 10 分钟</li>
           <li>中途退出视为放弃挑战</li>
           <li>成绩直接计入周榜排名</li>
-          <li>只有资深粉以上才能从容应对哦～</li>
+          <li>每日限制挑战 3 次，今日剩余 <b style="color:#8b1e2b">{{ 3 - dailyCount }}</b> 次</li>
         </ul>
+        <p v-if="dailyCount >= 3" style="color:#b33;margin-bottom:1rem;font-weight:500">
+          ⚠️ 今日挑战次数已用完，明天再来吧！
+        </p>
         <div style="display:flex;gap:.5rem">
-          <button class="btn" @click="startAdventure">确认挑战</button>
+          <button class="btn" @click="startAdventure" :disabled="dailyCount >= 3">确认挑战</button>
           <button class="btn ghost" @click="goBack">返回首页</button>
         </div>
       </div>
@@ -293,6 +296,13 @@ async function nextQuestion() {
 async function handleFinish() {
   session.value.totalCostMs = (600 - remainingTime.value) * 1000
   
+  // 增加今日挑战次数
+  dailyCount.value++
+  storage.set('adventureDailyCount', {
+    date: todayStr.value,
+    count: dailyCount.value
+  })
+  
   // 保存到本地战绩
   record.save(session.value)
   
@@ -326,11 +336,19 @@ function startTimer() {
   timerId = setInterval(() => {
     remainingTime.value--
     if (remainingTime.value <= 0) {
-      // 时间到，强制交卷
+      // 时间到，强制交卷，同时消耗一次次数
       stopTimer()
       if (!finished.value) {
         // 未答的题都算答错
         const unanswered = questions.value.length - currentIndex.value - (answered.value ? 0 : 1)
+        if (!session.value) {
+          session.value = {
+            startTime: Date.now(),
+            totalScore: 0,
+            totalCostMs: 0,
+            records: []
+          }
+        }
         for (let i = 0; i < unanswered; i++) {
           session.value?.records.push({
             questionId: '',
@@ -396,6 +414,13 @@ function restart() {
   showConfirm.value = true
 }
 
+// 等级判断
+const levelDetail = ref({ level: '路人粉' as any, correct: 0, total: 0, accuracy: 0 })
+const showConfirm = ref(true)
+const todayStr = computed(() => new Date().toISOString().split('T')[0])
+const dailyCount = ref(0)
+
+// 读取今日已挑战次数
 onMounted(async () => {
   await auth.fetchMe()
   
@@ -403,11 +428,16 @@ onMounted(async () => {
   if (auth.isLoggedIn.value) {
     const allRecords = record.all().flatMap(s => s.records)
     levelDetail.value = getLevelDetail(allRecords)
+  } else {
+    levelDetail.value.level = '未登录'
   }
   
-  // 未登录也显示提示
-  if (!auth.isLoggedIn.value) {
-    levelDetail.value.level = '未登录'
+  // 读取今日挑战次数
+  const saved = storage.get<{ date: string; count: number }>('adventureDailyCount')
+  if (saved && saved.date === todayStr.value) {
+    dailyCount.value = saved.count
+  } else {
+    dailyCount.value = 0
   }
 })
 
