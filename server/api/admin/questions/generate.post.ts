@@ -1,5 +1,7 @@
-import { kv } from './server/utils/kv'
-import type { Question } from './types'
+import { defineEventHandler } from 'h3'
+import { ok } from '~/server/utils/response'
+import { kv } from '~/server/utils/kv'
+import type { Question } from '~/types'
 
 // 歌词填空模板
 const lyricsTemplates = [

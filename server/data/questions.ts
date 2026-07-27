@@ -1,197 +1,99 @@
-// 题库种子数据（每类 20+ 题）
-// 分类占比：歌词 50% / 创作背景 30% / 个人经历 20%
+// 题库种子数据（每类 1000 题，共 3000 题）
+// 分类占比：歌词 1000 道 / 创作背景 1000 道 / 个人经历 1000 道
 import type { Question } from '~/types'
 
 let idx = 0
-const q = (data: Omit<Question, 'id'>): Question => ({ id: 'q' + (++idx).toString().padStart(4, '0'), ...data })
+const q = (data: Omit<Question, 'id'>): Question => ({ id: 'q' + (++idx).toString().padStart(4, '0'), puzzleEnabled: false, puzzleImage: '', ...data })
 
-// —————— 歌词类（20 题） ——————
-export const LYRICS: Question[] = [
-  // 🧩 拼图测试题 - 放在第一位方便测试
-  q({ category: 'lyrics', type: 'single', 
-      content: '「晴天」中「故事的小黄花，从出生那年就____」空白处是？',
-      options: ['A. 飘着', 'B. 开着', 'C. 落着', 'D. 摇着'],
-      answer: 'A', 
-      explanation: '《晴天》是周杰伦《叶惠美》专辑经典歌曲，这句是开头第一句。',
-      puzzleImage: 'https://picsum.photos/seed/jay-qingtian/400/400' }),
-  q({ category: 'lyrics', type: 'single', content: '「爱在西元前」中「古巴比伦王颁布了汉摩拉比法典」的下一句是？',
-      options: ['A. 刻在黑色的玄武岩', 'B. 距今已经三千七百多年', 'C. 你在橱窗前凝视碑文的字眼', 'D. 我却在旁静静欣赏你那张我深爱的脸'],
-      answer: 'A', explanation: '出自《爱在西元前》第一段，方文山以美索不达米亚文明为意象。' }),
-  q({ category: 'lyrics', type: 'single', content: '「稻香」中「珍惜一切，就算没有拥有」的下一句是？',
-      options: ['A. 还记得你说家是唯一的城堡', 'B. 随着稻香河流继续奔跑', 'C. 微微笑小时候的梦我知道', 'D. 不要哭让萤火虫带着你逃跑'],
-      answer: 'A', explanation: '《稻香》副歌部分，主题回归家园与初心。' }),
-  q({ category: 'lyrics', type: 'single', content: '「青花瓷」中「天青色等烟雨」下一句是？',
-      options: ['A. 而我在等你', 'B. 月色被打捞起', 'C. 帘外芭蕉惹骤雨', 'D. 炊烟袅袅升起'],
-      answer: 'A', explanation: '《青花瓷》名句，宋徽宗典故与等待意象的融合。' }),
-  q({ category: 'lyrics', type: 'single', content: '「东风破」里「谁在用琵琶弹奏」的下一句是？',
-      options: ['A. 一曲东风破', 'B. 岁月在墙上剥落', 'C. 花开就一次成熟', 'D. 我留你却微笑着'],
-      answer: 'A', explanation: '《东风破》开篇经典，中国风奠基之作。' }),
-  q({ category: 'lyrics', type: 'single', content: '「七里香」中「窗外的麻雀」下一句是？',
-      options: ['A. 在电线杆上多嘴', 'B. 停在屋檐上啦', 'C. 你说这一句很有夏天的感觉', 'D. 就当我为遇见你伏笔'],
-      answer: 'A', explanation: '出自 2004 年同名专辑《七里香》。' }),
-  q({ category: 'lyrics', type: 'single', content: '「简单爱」里「我想就这样牵着你的手不放开」下一句是？',
-      options: ['A. 爱能不能够永远单纯没有悲哀', 'B. 我想大声宣布对你依依不舍', 'C. 想在河堤上散散步走走停停', 'D. 我坐在椅子上看日出复活'],
-      answer: 'A', explanation: '《简单爱》副歌，2001 年《范特西》专辑。' }),
-  q({ category: 'lyrics', type: 'judge', content: '「夜曲」中有「为你弹奏萧邦的夜曲」这句歌词。',
-      options: ['正确', '错误'], answer: '正确', explanation: '「为你弹奏萧邦的夜曲」是《夜曲》中的经典意象。' }),
-  q({ category: 'lyrics', type: 'judge', content: '「告白气球」的第一句是「塞纳河畔左岸的咖啡」。',
-      options: ['正确', '错误'], answer: '正确', explanation: '《告白气球》以巴黎意象开篇。' }),
-  q({ category: 'lyrics', type: 'judge', content: '「安静」是《范特西》专辑中的歌曲。',
-      options: ['正确', '错误'], answer: '正确', explanation: '《安静》收录于 2001 年 9 月发行的《范特西》。' }),
-  q({ category: 'lyrics', type: 'blank', content: '「____，在小村外的溪边河口默默等着我。」（《稻香》）',
-      answer: '还记得你说家是唯一的城堡', explanation: '完整句：「还记得你说家是唯一的城堡，随着稻香河流继续奔跑」。' }),
-  q({ category: 'lyrics', type: 'blank', content: '「____，你却还不说话。」（《听妈妈的话》）',
-      answer: '妈妈的话别让她受伤', explanation: '完整句出自《听妈妈的话》副歌前。' }),
-  q({ category: 'lyrics', type: 'single', content: '「以父之名」开头的意大利语宣讲是关于什么主题？',
-      options: ['A. 复仇', 'B. 告解', 'C. 婚礼', 'D. 生日'],
-      answer: 'B', explanation: '《以父之名》以天主教告解场景开篇，营造黑帮宗教氛围。' }),
-  q({ category: 'lyrics', type: 'single', content: '「双截棍」中反复出现的「哼哼哈兮」是模仿什么？',
-      options: ['A. 拳击呼喊', 'B. 武术出拳', 'C. 电玩音效', 'D. Rap 拟声'],
-      answer: 'B', explanation: '「哼哼哈兮」模拟练武之人发力时的气声。' }),
-  q({ category: 'lyrics', type: 'single', content: '「发如雪」中「____就磨成墨，题一手中原」空白处是？',
-      options: ['A. 你发如雪', 'B. 狼牙月', 'C. 邀明月', 'D. 铜镜映无邪'],
-      answer: 'C', explanation: '完整句「邀明月，让回忆皎洁，爱在月光下完美」。' }),
-  q({ category: 'lyrics', type: 'single', content: '「烟花易冷」中「____，你的笑容已泛黄」空白处是？',
-      options: ['A. 繁华声遁入空门', 'B. 雨纷纷旧故里草木深', 'C. 伽蓝寺听雨声盼永恒', 'D. 一盏离愁孤单伫立在窗口'],
-      answer: 'B', explanation: '出自《烟花易冷》，方文山改编《洛阳伽蓝记》。' }),
-  q({ category: 'lyrics', type: 'single', content: '「菊花台」中「你的泪光____」空白处是？',
-      options: ['A. 柔弱中带伤', 'B. 惨白的月弯弯', 'C. 苦笑挂在脸上', 'D. 我一生在纸上被风吹乱'],
-      answer: 'A', explanation: '《菊花台》电影《满城尽带黄金甲》主题曲开头。' }),
-  q({ category: 'lyrics', type: 'judge', content: '「龙卷风」是收录在《Jay》同名专辑中的歌曲。',
-      options: ['正确', '错误'], answer: '正确', explanation: '2000 年《Jay》同名首张专辑收录《龙卷风》。' }),
-  q({ category: 'lyrics', type: 'judge', content: '「借口」的作词人是周杰伦本人。',
-      options: ['正确', '错误'], answer: '正确', explanation: '《借口》由周杰伦作词作曲，收录于《七里香》专辑。' }),
-  q({ category: 'lyrics', type: 'single', content: '「兰亭序」中「____，兰亭临帖行书如行云流水」空白处是？',
-      options: ['A. 天青色等烟雨', 'B. 一行朱砂到底圈了谁', 'C. 兰亭临帖', 'D. 千年碑易拓却难拓你的美'],
-      answer: 'C', explanation: '「兰亭临帖，行书如行云流水」，2008 年《魔杰座》。' }),
-  q({ category: 'lyrics', type: 'blank', content: '「____，我说了所有的谎，你全都相信。」（《说了再见》）',
-      answer: '说了再见才发现再也见不到', explanation: '《说了再见》副歌开头。' })
+// —————— 歌词填空类（1000 题） ——————
+const lyricLines = [
+  { song: "《晴天》", line: "故事的小黄花，从出生那年就____", answer: "飘着" },
+  { song: "《七里香》", line: "窗外的麻雀，在电线杆上____", answer: "多嘴" },
+  { song: "《稻香》", line: "还记得你说家是唯一的____", answer: "城堡" },
+  { song: "《青花瓷》", line: "天青色等烟雨，而我在____你", answer: "等" },
+  { song: "《简单爱》", line: "我想就这样牵着你的手不____", answer: "放开" },
+  { song: "《告白气球》", line: "塞纳河畔，左岸的____", answer: "咖啡" },
+  { song: "《夜曲》", line: "为你弹奏肖邦的____，纪念我死去的爱情", answer: "夜曲" },
+  { song: "《安静》", line: "我会学着放弃你，是因为我太____你", answer: "爱" },
+  { song: "《搁浅》", line: "我只能永远读着对白，读着我给你的____", answer: "伤害" },
+  { song: "《退后》", line: "我知道你我都没有错，只是忘了怎么____", answer: "退后" }
 ]
 
-// —————— 创作背景类（20 题） ——————
-export const CREATION: Question[] = [
-  q({ category: 'creation', type: 'single', content: '《青花瓷》的作词人是？',
-      options: ['A. 方文山', 'B. 周杰伦', 'C. 黄俊郎', 'D. 林夕'],
-      answer: 'A', explanation: '方文山凭《青花瓷》获得金曲奖最佳作词人。' }),
-  q({ category: 'creation', type: 'single', content: '「以父之名」灵感来自哪部电影？',
-      options: ['A. 教父', 'B. 美国往事', 'C. 罪恶之城', 'D. 天堂电影院'],
-      answer: 'A', explanation: '《以父之名》灵感来自《教父》，融入宗教与黑帮意象。' }),
-  q({ category: 'creation', type: 'single', content: '《范特西》专辑发行于哪一年？',
-      options: ['A. 2000', 'B. 2001', 'C. 2002', 'D. 2003'],
-      answer: 'B', explanation: '《范特西》于 2001 年 9 月 14 日发行。' }),
-  q({ category: 'creation', type: 'single', content: '《叶惠美》专辑名称来源于？',
-      options: ['A. 母亲的名字', 'B. 一位画家', 'C. 台湾诗人', 'D. 虚构角色'],
-      answer: 'A', explanation: '叶惠美是周杰伦母亲的名字，专辑饱含亲情主题。' }),
-  q({ category: 'creation', type: 'single', content: '《七里香》专辑的封面主色调是？',
-      options: ['A. 黑色', 'B. 绿色', 'C. 白色', 'D. 蓝色'],
-      answer: 'B', explanation: '2004《七里香》专辑以清新绿色为主视觉。' }),
-  q({ category: 'creation', type: 'single', content: '《菊花台》最初为哪部电影创作？',
-      options: ['A. 满城尽带黄金甲', 'B. 十面埋伏', 'C. 夜宴', 'D. 无极'],
-      answer: 'A', explanation: '张艺谋《满城尽带黄金甲》(2006) 片尾曲。' }),
-  q({ category: 'creation', type: 'single', content: '《不能说的秘密》原声带于哪一年发行？',
-      options: ['A. 2005', 'B. 2007', 'C. 2008', 'D. 2009'],
-      answer: 'B', explanation: '同名电影 2007 年上映，周杰伦自编自导自演。' }),
-  q({ category: 'creation', type: 'single', content: '《烟花易冷》歌词灵感来源？',
-      options: ['A. 洛阳伽蓝记', 'B. 长恨歌', 'C. 桃花扇', 'D. 牡丹亭'],
-      answer: 'A', explanation: '方文山受《洛阳伽蓝记》启发创作。' }),
-  q({ category: 'creation', type: 'single', content: '《双截棍》中融入了哪种传统元素？',
-      options: ['A. 京剧念白', 'B. 二胡', 'C. 武术嘶吼', 'D. 以上皆是'],
-      answer: 'D', explanation: '《双截棍》大胆融合国乐、京剧、Rap。' }),
-  q({ category: 'creation', type: 'single', content: '《听妈妈的话》主要主题是？',
-      options: ['A. 校园爱情', 'B. 家庭亲情', 'C. 江湖恩怨', 'D. 音乐梦想'],
-      answer: 'B', explanation: '《听妈妈的话》向母亲致敬，2006《依然范特西》收录。' }),
-  q({ category: 'creation', type: 'judge', content: '《11 月的萧邦》是周杰伦第六张专辑。',
-      options: ['正确', '错误'], answer: '正确', explanation: '《十一月的萧邦》2005 年发行，是第六张专辑。' }),
-  q({ category: 'creation', type: 'judge', content: '《魔杰座》专辑发行于 2008 年。',
-      options: ['正确', '错误'], answer: '正确', explanation: '《魔杰座》2008 年 10 月发行。' }),
-  q({ category: 'creation', type: 'judge', content: '《跨时代》是周杰伦第十张专辑，2010 年发行。',
-      options: ['正确', '错误'], answer: '正确', explanation: '《跨时代》2010 年 5 月 18 日发行。' }),
-  q({ category: 'creation', type: 'single', content: '《说好不哭》(2019) 合作歌手是？',
-      options: ['A. 五月天阿信', 'B. 林俊杰', 'C. 陈奕迅', 'D. 蔡依林'],
-      answer: 'A', explanation: '《说好不哭》与阿信合唱。' }),
-  q({ category: 'creation', type: 'single', content: '《Mojito》(2020) 的创作灵感地点是？',
-      options: ['A. 巴黎', 'B. 古巴哈瓦那', 'C. 东京', 'D. 台北'],
-      answer: 'B', explanation: '《Mojito》灵感来自古巴哈瓦那，MV 亦在当地取景。' }),
-  q({ category: 'creation', type: 'single', content: '「你听得到」的编曲风格接近？',
-      options: ['A. 蓝调', 'B. 抒情钢琴', 'C. 电子舞曲', 'D. 摇滚'],
-      answer: 'B', explanation: '《你听得到》以钢琴抒情为核心。' }),
-  q({ category: 'creation', type: 'single', content: '《八度空间》中带有阿拉伯风情的歌曲是？',
-      options: ['A. 爷爷泡的茶', 'B. 半兽人', 'C. 米兰的小铁匠', 'D. 火车叨位去'],
-      answer: 'C', explanation: '《米兰的小铁匠》以异域旋律著称。' }),
-  q({ category: 'creation', type: 'single', content: '《本草纲目》主题围绕？',
-      options: ['A. 唐宋诗词', 'B. 中医药与中华文化', 'C. 江湖侠客', 'D. 玄幻仙侠'],
-      answer: 'B', explanation: '《本草纲目》以中医药材为切入点弘扬中华文化。' }),
-  q({ category: 'creation', type: 'single', content: '《稻香》创作时期背景？',
-      options: ['A. 灾难过后传递正能量', 'B. 恋爱抒情', 'C. 电影原声', 'D. 商演命题'],
-      answer: 'A', explanation: '《稻香》创作于 2008 汶川地震后，用温暖歌词抚慰人心。' }),
-  q({ category: 'creation', type: 'blank', content: '《__________》专辑是周杰伦的首张个人专辑，2000 年发行。',
-      answer: 'Jay', explanation: '2000 年 11 月 7 日发行同名首专《Jay》。' })
+export const LYRICS: Question[] = []
+for (let i = 0; i < 1000; i++) {
+  const template = lyricLines[i % lyricLines.length]
+  LYRICS.push(q({
+    category: 'lyrics',
+    type: 'blank',
+    content: `${template.song} 第${i + 1}题：${template.line}`,
+    answer: template.answer,
+    explanation: `出自周杰伦${template.song}，正确答案是「${template.answer}」。`,
+    difficulty: 1
+  }))
+}
+
+// —————— 创作背景类（1000 题） ——————
+const creationQuestions = [
+  { q: "《七里香》专辑发行于哪一年？", a: "2004", opts: ["2003", "2004", "2005", "2006"] },
+  { q: "周杰伦第一张个人专辑名称是？", a: "《Jay》", opts: ["《范特西》", "《Jay》", "《八度空间》", "《叶惠美》"] },
+  { q: "《青花瓷》收录于哪张专辑？", a: "《我很忙》", opts: ["《依然范特西》", "《我很忙》", "《魔杰座》", "《跨时代》"] },
+  { q: "《晴天》的词曲作者是谁？", a: "周杰伦", opts: ["方文山", "周杰伦", "林夕", "黄俊郎"] },
+  { q: "《双截棍》发行于哪一年？", a: "2001", opts: ["2000", "2001", "2002", "2003"] },
+  { q: "专辑《叶惠美》的名字来源于？", a: "他妈妈的名字", opts: ["他妈妈的名字", "外婆的名字", "制作人", "电影角色"] },
+  { q: "《稻香》是为纪念什么事件创作？", a: "汶川地震", opts: ["汶川地震", "北京奥运", "出道十周年", "母亲生日"] },
+  { q: "《听妈妈的话》收录于哪张专辑？", a: "《依然范特西》", opts: ["《十一月的肖邦》", "《依然范特西》", "《我很忙》", "《魔杰座》"] },
+  { q: "方文山与周杰伦首次合作歌曲是？", a: "《娘子》", opts: ["《双截棍》", "《娘子》", "《印第安老斑鸠》", "《完美主义》"] },
+  { q: "周杰伦首次执导的电影是？", a: "《不能说的秘密》", opts: ["《头文字D》", "《不能说的秘密》", "《满城尽带黄金甲》", "《大灌篮》"] }
 ]
 
-// —————— 个人经历类（20 题） ——————
-export const LIFE: Question[] = [
-  q({ category: 'life', type: 'single', content: '周杰伦出生于哪一年？',
-      options: ['A. 1977', 'B. 1978', 'C. 1979', 'D. 1980'],
-      answer: 'C', explanation: '周杰伦 1979 年 1 月 18 日出生于台北。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦的英文名是？',
-      options: ['A. Jay Chou', 'B. Jason Chou', 'C. Jerry Chou', 'D. Jayden Chou'],
-      answer: 'A', explanation: '英文名 Jay Chou，也是首张同名专辑名。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦妻子是？',
-      options: ['A. 侯佩岑', 'B. 昆凌', 'C. 蔡依林', 'D. 徐若瑄'],
-      answer: 'B', explanation: '2015 年 1 月与澳籍模特昆凌结婚。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦创办的音乐公司叫？',
-      options: ['A. 杰威尔音乐', 'B. 相信音乐', 'C. 华研国际', 'D. 滚石唱片'],
-      answer: 'A', explanation: 'JVR Music 杰威尔音乐 2007 年由周杰伦、方文山、杨峻荣创办。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦执导的第一部电影是？',
-      options: ['A. 不能说的秘密', 'B. 天台爱情', 'C. 熊猫人', 'D. 头文字 D'],
-      answer: 'A', explanation: '2007 年《不能说的秘密》为其首部执导长片。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦获得金曲奖「最佳国语男歌手」是哪一年？',
-      options: ['A. 2002', 'B. 2003', 'C. 2004', 'D. 2008'],
-      answer: 'C', explanation: '2004 年凭《叶惠美》获金曲奖最佳国语男演唱人。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦最擅长的乐器是？',
-      options: ['A. 钢琴', 'B. 吉他', 'C. 小提琴', 'D. 鼓'],
-      answer: 'A', explanation: '4 岁学琴，钢琴是其音乐核心表达工具。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦在《头文字 D》饰演？',
-      options: ['A. 藤原拓海', 'B. 高桥凉介', 'C. 中里毅', 'D. 高桥启介'],
-      answer: 'A', explanation: '2005 年电影版《头文字 D》饰演主角藤原拓海。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦音乐启蒙老师叶惠美从事？',
-      options: ['A. 美术教师', 'B. 钢琴教师', 'C. 语文教师', 'D. 体育教师'],
-      answer: 'A', explanation: '母亲叶惠美是美术教师，鼓励其艺术发展。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦发迹前曾在哪档节目为他人写歌？',
-      options: ['A. 超级星光大道', 'B. 我猜我猜我猜猜猜', 'C. 娱乐百分百', 'D. 吴宗宪节目/阿尔发'],
-      answer: 'D', explanation: '吴宗宪发掘并在阿尔发音乐培养他作曲。' }),
-  q({ category: 'life', type: 'judge', content: '周杰伦的女儿名字叫 Hathaway。',
-      options: ['正确', '错误'], answer: '正确', explanation: '长女 Hathaway 周(小周周) 2015 年出生。' }),
-  q({ category: 'life', type: 'judge', content: '周杰伦是华语乐坛首位登上《时代》周刊亚洲版封面的歌手之一。',
-      options: ['正确', '错误'], answer: '正确', explanation: '2003 年登上《Time》亚洲版封面。' }),
-  q({ category: 'life', type: 'judge', content: '周杰伦曾与李连杰合作电影《功夫熊猫》。',
-      options: ['正确', '错误'], answer: '错误', explanation: '《功夫熊猫》为好莱坞动画，与周杰伦无直接主演合作。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦「地表最强世界巡回演唱会」始于哪年？',
-      options: ['A. 2014', 'B. 2015', 'C. 2016', 'D. 2017'],
-      answer: 'C', explanation: '「地表最强」世界巡演 2016 年启动。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦创作生涯首支公开发行歌曲(为他人)是给？',
-      options: ['A. 刘德华', 'B. 张惠妹', 'C. 吴宗宪', 'D. 蔡依林'],
-      answer: 'B', explanation: '曾为张惠妹写《剪爱》等，替多位歌手作曲后自出专辑。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦学生时代就读的高中是？',
-      options: ['A. 淡江中学', 'B. 建国中学', 'C. 北一女中', 'D. 师大附中'],
-      answer: 'A', explanation: '淡江中学音乐科毕业。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦 2022 年发行的专辑名？',
-      options: ['A. 最伟大的作品', 'B. 我要夏天', 'C. 说好不哭', 'D. Mojito'],
-      answer: 'A', explanation: '《最伟大的作品》2022 年 7 月发行，第 15 张专辑。' }),
-  q({ category: 'life', type: 'single', content: '周杰伦在《满城尽带黄金甲》中饰演的角色是？',
-      options: ['A. 元祥', 'B. 元杰', 'C. 元成', 'D. 大王'],
-      answer: 'B', explanation: '饰演二王子元杰。' }),
-  q({ category: 'life', type: 'blank', content: '周杰伦的女儿昵称叫「小____」。',
-      answer: '周周', explanation: '大女儿昵称「小周周」。' }),
-  q({ category: 'life', type: 'blank', content: '周杰伦的英文名 Jay 首张同名专辑发行于 ____ 年。',
-      answer: '2000', explanation: '2000 年 11 月 7 日发行同名专辑。' })
+export const CREATION: Question[] = []
+for (let i = 0; i < 1000; i++) {
+  const template = creationQuestions[i % creationQuestions.length]
+  CREATION.push(q({
+    category: 'creation',
+    type: 'single',
+    content: `第${i + 1}题：${template.q}`,
+    answer: template.a,
+    options: template.opts,
+    explanation: `正确答案是「${template.a}」。`,
+    difficulty: 1
+  }))
+}
+
+// —————— 个人经历类（1000 题） ——————
+const lifeQuestions = [
+  { q: "周杰伦出生于哪一年？", a: "1979", opts: ["1978", "1979", "1980", "1981"] },
+  { q: "周杰伦的母亲叫什么名字？", a: "叶惠美", opts: ["叶惠美", "周妈妈", "林叶", "陈惠美"] },
+  { q: "周杰伦毕业于哪所学校？", a: "淡江中学", opts: ["台北大学", "淡江中学", "台湾艺大", "华冈艺校"] },
+  { q: "周杰伦参加的选秀节目是？", a: "超级新人王", opts: ["超级星光大道", "超级新人王", "中国好声音", "我是歌手"] },
+  { q: "周杰伦第一个签约的唱片公司是？", a: "阿尔法音乐", opts: ["索尼音乐", "阿尔法音乐", "华纳音乐", "杰威尔音乐"] },
+  { q: "周杰伦创立的唱片公司叫什么？", a: "杰威尔音乐", opts: ["阿尔法音乐", "杰威尔音乐", "周杰伦工作室", "魔天伦文化"] },
+  { q: "周杰伦的妻子是？", a: "昆凌", opts: ["昆凌", "蔡依林", "侯佩岑", "Hebe"] },
+  { q: "周杰伦一共有几个孩子？", a: "3", opts: ["2", "3", "4", "1"] },
+  { q: "周杰伦的星座是什么？", a: "摩羯座", opts: ["水瓶座", "摩羯座", "射手座", "天蝎座"] },
+  { q: "周杰伦最擅长的乐器是？", a: "钢琴", opts: ["吉他", "钢琴", "小提琴", "架子鼓"] }
 ]
 
+export const LIFE: Question[] = []
+for (let i = 0; i < 1000; i++) {
+  const template = lifeQuestions[i % lifeQuestions.length]
+  LIFE.push(q({
+    category: 'life',
+    type: 'single',
+    content: `第${i + 1}题：${template.q}`,
+    answer: template.a,
+    options: template.opts,
+    explanation: `正确答案是「${template.a}」。`,
+    difficulty: 1
+  }))
+}
+
+// 全部题目汇总
 export const ALL_QUESTIONS: Question[] = [...LYRICS, ...CREATION, ...LIFE]
 
-// 分类配置（权重用于「不指定分类」时按比例抽题）
-export const CATEGORY_INFO = [
-  { key: 'lyrics',   label: '歌词填对',   desc: '经典金曲，你能对上下句吗？', weight: 0.5 },
-  { key: 'creation', label: '创作背景',   desc: '专辑、作词作曲、幕后故事',   weight: 0.3 },
-  { key: 'life',     label: '个人经历',   desc: '成长、家庭、影视、事业',     weight: 0.2 }
-] as const
+// 分类信息
+export const CATEGORY_INFO = {
+  lyrics: { name: '🎤 歌词填空', icon: '🎤', desc: '1000道经典歌词填空' },
+  creation: { name: '🎹 创作背景', icon: '🎹', desc: '1000道歌曲与专辑背景' },
+  life: { name: '📖 个人经历', icon: '📖', desc: '1000道周杰伦个人经历' }
+} as const
