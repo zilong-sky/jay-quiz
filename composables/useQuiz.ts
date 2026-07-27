@@ -50,7 +50,9 @@ export const useQuiz = () => {
   function submitAnswer(userAnswer: string) {
     const q = current.value
     if (!q) return null
-    const correct = userAnswer.trim() === q.answer.trim()
+    // 答案归一化：去空格、转小写、去掉所有标点符号
+    const normalize = (s: string) => s.trim().toLowerCase().replace(/[，。、？！：；""''（）\[\]【】《》.,!?;:"'()]/g, '')
+    const correct = normalize(userAnswer) === normalize(q.answer)
     const scoreGained = correct ? (q.score ?? 10) : 0
     const record: AnswerRecord = {
       questionId: q.id,
