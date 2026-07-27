@@ -281,74 +281,71 @@ function startTimer() {
 function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null } }
 
 async function restart() {
-  // 重新开始答题，清除进度
-  storage.remove('quizSession')
-  async function restart() {
-    // 休闲模式重置不从0开始，而是继续当前进度
-    answered.value = false
-    selectedOpt.value = null
-    blankInput.value = ''
-    puzzleCompleted.value = false
-    loading.value = true
-  
-    // 休闲模式：按顺序加载下一批题目
-    const res = await quiz.loadSequentialQuestions(globalOffset.value, pageSize, currentCategory.value as any)
-    if (res.code !== 0) {
-      loadError.value = res.message || '题目加载失败'
-    }
-    loading.value = false
-  }
+  // 休闲模式重置不从0开始，而是继续当前进度
+  answered.value = false
+  selectedOpt.value = null
+  blankInput.value = ''
+  puzzleCompleted.value = false
+  loading.value = true
 
-  // 保存休闲模式进度到服务端
-  async function saveCasualProgress() {
-    const batchCorrectCount = quiz.session.value ? quiz.session.value.records.filter(r => r.correct).length : 0
-    await $fetch('/api/casual/progress/save', {
-      method: 'POST',
-      body: {
-        category: currentCategory.value,
-        offset: globalOffset.value + quiz.currentIndex.value + 1,
-        correctCount: batchCorrectCount
-      }
-    })
+  // 休闲模式：按顺序加载下一批题目
+  const res = await quiz.loadSequentialQuestions(globalOffset.value, pageSize, currentCategory.value as any)
+  if (res.code !== 0) {
+    loadError.value = res.message || '题目加载失败'
   }
+  loading.value = false
+}
 
-  onMounted(async () => {
-    await auth.fetchMe()
-  
-    currentCategory.value = route.query.cat as string || undefined
-  
-    // 加载历史进度
-    const progressRes = await $fetch('/api/casual/progress/get', {
-      query: { category: currentCategory.value }
-    })
-    if (progressRes.code === 0 && progressRes.data) {
-      globalOffset.value = progressRes.data.offset || 0
-      totalCorrectCount.value = progressRes.data.totalCorrect || 0
+// 保存休闲模式进度到服务端
+async function saveCasualProgress() {
+  const batchCorrectCount = quiz.session.value ? quiz.session.value.records.filter(r => r.correct).length : 0
+  await $fetch('/api/casual/progress/save', {
+    method: 'POST',
+    body: {
+      category: currentCategory.value,
+      offset: globalOffset.value + quiz.currentIndex.value + 1,
+      correctCount: batchCorrectCount
     }
-  
-    // 按当前进度加载题目
-    loading.value = true
-    const res = await quiz.loadSequentialQuestions(globalOffset.value, pageSize, currentCategory.value as any)
-    if (res.code !== 0) {
-      loadError.value = res.message || '题目加载失败'
-    }
-    loading.value = false
   })
+}
 
-  onBeforeUnmount(async () => {
-    // 退出时自动保存进度
+onMounted(async () => {
+  await auth.fetchMe()
+
+  currentCategory.value = route.query.cat as string || undefined
+
+  // 加载历史进度
+  const progressRes = await $fetch('/api/casual/progress/get', {
+    query: { category: currentCategory.value }
+  })
+  if (progressRes.code === 0 && progressRes.data) {
+    globalOffset.value = progressRes.data.offset || 0
+    totalCorrectCount.value = progressRes.data.totalCorrect || 0
+  }
+
+  // 按当前进度加载题目
+  loading.value = true
+  const res = await quiz.loadSequentialQuestions(globalOffset.value, pageSize, currentCategory.value as any)
+  if (res.code !== 0) {
+    loadError.value = res.message || '题目加载失败'
+  }
+  loading.value = false
+})
+
+onBeforeUnmount(async () => {
+  // 退出时自动保存进度
+  await saveCasualProgress()
+})
+
+// 答题完成自动保存并加载下一批
+watch(quiz.finished, async (finished) => {
+  if (finished) {
     await saveCasualProgress()
-  })
-
-  // 答题完成自动保存并加载下一批
-  watch(quiz.finished, async (finished) => {
-    if (finished) {
-      await saveCasualProgress()
-      // 更新全局偏移，加载下一批
-      globalOffset.value += quiz.questions.value.length
-      // 这里可以自动加载下一批，或者提示用户
-    }
-  })
+    // 更新全局偏移，加载下一批
+    globalOffset.value += quiz.questions.value.length
+    // 这里可以自动加载下一批，或者提示用户
+  }
+})
 </script>
 
 <style scoped>
