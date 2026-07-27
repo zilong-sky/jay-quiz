@@ -414,12 +414,6 @@ function restart() {
   showConfirm.value = true
 }
 
-// 等级判断
-const levelDetail = ref({ level: '路人粉' as any, correct: 0, total: 0, accuracy: 0 })
-const showConfirm = ref(true)
-const todayStr = computed(() => new Date().toISOString().split('T')[0])
-const dailyCount = ref(0)
-
 // 读取今日已挑战次数
 onMounted(async () => {
   await auth.fetchMe()
