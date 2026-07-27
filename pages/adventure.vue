@@ -19,9 +19,9 @@
         <p v-if="dailyCount >= 3" style="color:#b33;margin-bottom:1rem;font-weight:500">
           ⚠️ 今日挑战次数已用完，明天再来吧！
         </p>
-        <div style="display:flex;gap:.5rem">
-          <button class="btn" @click="startAdventure" :disabled="dailyCount >= 3">确认挑战</button>
-          <button class="btn ghost" @click="goBack">返回首页</button>
+        <div style="display:flex;gap:1rem;justify-content:center;margin-top:1.5rem">
+          <button class="btn" @click="startAdventure" :disabled="dailyCount >= 3" style="min-width:100px">确认挑战</button>
+          <button class="btn ghost" @click="goBack" style="min-width:100px">返回首页</button>
         </div>
       </div>
     </div>
