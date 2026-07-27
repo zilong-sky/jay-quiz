@@ -169,9 +169,9 @@ function chooseOption(opt: string) {
   if (!q) return
   // 直接对比完整选项，不需要取第一个字符
   const userAnswer = opt.trim()
+  answered.value = true  // 先标记已答题，再提交
   const rec = quiz.submitAnswer(userAnswer)
   lastCorrect.value = !!rec?.correct
-  answered.value = true
   stopTimer()
 }
 
@@ -186,9 +186,9 @@ function submitBlank() {
     return
   }
 
+  answered.value = true  // 先标记已答题，再提交
   const rec = quiz.submitAnswer(blankInput.value)
   lastCorrect.value = !!rec?.correct
-  answered.value = true
   stopTimer()
 }
 
