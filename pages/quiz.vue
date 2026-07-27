@@ -14,7 +14,7 @@
       <div class="subtle" style="margin-bottom:1rem">
         已答 <b>{{ quiz.currentIndex.value + (answered.value ? 1 : 0) + globalOffset }}</b> 题 ·
         对 <b style="color:#0f3d2e">{{ totalCorrectCount + correctCount }}</b> ·
-        错 <b style="color:#8b1e2b">{{ quiz.currentIndex.value + (answered.value ? 1 : 0) - correctCount }}</b> ·
+        错 <b style="color:#8b1e2b">{{ (quiz.currentIndex.value + (answered.value ? 1 : 0) + globalOffset) - (totalCorrectCount + correctCount) }}</b> ·
         累计 <b style="color:#d4a017">{{ totalCorrectCount + correctCount }}</b> 分
         <span v-if="quiz.current.value.puzzleImage" style="float:right;color:#8b1e2b">🧩 拼图题</span>
       </div>
