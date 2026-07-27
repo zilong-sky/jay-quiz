@@ -4,6 +4,11 @@ import bcrypt from 'bcryptjs'
 export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
   
+  // 只拦截 /admin 开头的路由
+  if (!url.pathname.startsWith('/admin')) {
+    return
+  }
+  
   // 登录接口不校验
   if (url.pathname.includes('/api/admin/auth/login')) {
     return
