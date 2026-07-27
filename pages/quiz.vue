@@ -73,10 +73,6 @@
           </button>
         </div>
       </div>
-
-      <div style="margin-top:1rem" class="subtle">
-        <label><input type="checkbox" v-model="timerEnabled" /> 开启答题倒计时（每题 30s）</label>
-      </div>
     </div>
 
     <!-- 结算 -->
