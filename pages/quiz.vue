@@ -170,8 +170,8 @@ function chooseOption(opt: string) {
   selectedOpt.value = opt
   const q = quiz.current.value
   if (!q) return
-  const t: QuestionType = q.type
-  const userAnswer = t === 'single' ? opt.trim().charAt(0) : opt.trim()
+  // 直接对比完整选项，不需要取第一个字符
+  const userAnswer = opt.trim()
   const rec = quiz.submitAnswer(userAnswer)
   lastCorrect.value = !!rec?.correct
   answered.value = true
