@@ -49,18 +49,20 @@
         >{{ opt }}</button>
       </div>
       <!-- 填空 -->
-      <div v-else :class="{ disabled: quiz.current.value.puzzleImage && !puzzleCompleted }">
+      <div v-else :class="{ disabled: quiz.current.value.puzzleEnabled && !puzzleCompleted }">
         <input
           v-model="blankInput"
           class="input"
           placeholder="请输入答案..."
-          :disabled="answered || (quiz.current.value.puzzleImage && !puzzleCompleted)"
+          :disabled="answered || (quiz.current.value.puzzleEnabled && !puzzleCompleted)"
+          @keyup.enter="submitBlank"
         />
         <button
           v-if="!answered"
           class="btn"
           @click="submitBlank"
-          :disabled="quiz.current.value.puzzleImage && !puzzleCompleted"
+          :disabled="quiz.current.value.puzzleEnabled && !puzzleCompleted"
+          style="margin-top:.5rem"
         >提交</button>
       </div>
 
