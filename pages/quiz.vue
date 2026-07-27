@@ -128,9 +128,7 @@ const progress = computed(() =>
     ? Math.round(((quiz.currentIndex.value + (answered.value ? 1 : 0)) / quiz.questions.value.length) * 100)
     : 0
 )
-const correctCount = computed(() =>
-  quiz.session.value ? quiz.session.value.records.filter(r => r.correct).length : 0
-)
+const correctCount = computed(() => quiz.records.value.filter(r => r.correct).length)
 
 const selectedOpt = ref<string | null>(null)
 
@@ -144,11 +142,10 @@ function optClass(opt: string) {
   if (!answered.value) return selectedOpt.value === opt ? 'selected' : ''
   const ans = quiz.current.value?.answer
   if (!ans) return ''
-  // 单选题 opt 形如 "A. xxx"，answer 存 "A"；判断题 opt/answer 皆为文本
+  // 直接对比完整选项，和submitAnswer保持一致
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/[，。、？！：；""''（）\[\]【】《》.,!?;:"'()]/g, '')
   const isChosen = selectedOpt.value === opt
-  const isRight = quiz.current.value?.type === 'single'
-    ? opt.trim().startsWith(ans + '.')
-    : opt.trim() === ans.trim()
+  const isRight = normalize(opt) === normalize(ans)
   if (isRight) return 'correct'
   if (isChosen && !isRight) return 'wrong'
   return ''
