@@ -38,13 +38,13 @@
       </div>
 
       <!-- 单选/判断 -->
-      <div v-if="quiz.current.value.type !== 'blank'" class="options" :class="{ disabled: quiz.current.value.puzzleImage && !puzzleCompleted }">
+      <div v-if="quiz.current.value.type !== 'blank'" class="options" :class="{ disabled: quiz.current.value.puzzleEnabled && !puzzleCompleted }">
         <button
           v-for="(opt, i) in quiz.current.value.options"
           :key="i"
           class="opt"
           :class="optClass(opt)"
-          :disabled="answered || (quiz.current.value.puzzleImage && !puzzleCompleted)"
+          :disabled="answered || (quiz.current.value.puzzleEnabled && !puzzleCompleted)"
           @click="chooseOption(opt)"
         >{{ opt }}</button>
       </div>
