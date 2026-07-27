@@ -39,54 +39,53 @@ export default defineEventHandler(async (event) => {
   if (!all.length) return fail('题库尚未初始化')
 
   let picked: Question[] = []
-  
-  // 🔧 测试用：拼图题固定放在第一位
-  const allQuestions = await getAllQuestions()
-  const puzzleQuestion = allQuestions.find(q => q.puzzleImage)
-  if (puzzleQuestion) {
-    picked.push(puzzleQuestion)
-  }
 
-  if (category) {
-    // 选指定分类的其他题，排除已经放的拼图题（避免重复）
-    const otherQuestions = shuffle(allQuestions.filter(x => 
-      x.category === category && x.id !== puzzleQuestion?.id
-    ))
-    picked = [...picked, ...otherQuestions.slice(0, count - picked.length)]
-  } else {
-    // 按分类权重抽取，排除已经放的拼图题
-    const bucketCounts = CATEGORY_INFO.map(c => ({ c, n: Math.round(c.weight * count) }))
-    // 调整余数
-    let diff = count - bucketCounts.reduce((s, b) => s + b.n, 0)
-    while (diff !== 0) {
-      const target = bucketCounts[diff > 0 ? 0 : bucketCounts.length - 1]
-      target.n += diff > 0 ? 1 : -1
-      diff += diff > 0 ? -1 : 1
+  // 按分类筛选
+  let pool = category ? all.filter(q => q.category === category) : all
+
+  // 区分拼图题和普通题
+  const puzzleQuestions = pool.filter(q => q.puzzleImage && q.puzzleEnabled)
+  const normalQuestions = pool.filter(q => !q.puzzleImage || !q.puzzleEnabled)
+
+  // 随机打乱普通题
+  const shuffled = shuffle(normalQuestions)
+  picked = shuffled.slice(0, count)
+
+  // 拼图题随机分布：每10道题插入一个拼图题
+  if (puzzleQuestions.length > 0) {
+    const shuffledPuzzles = shuffle(puzzleQuestions)
+    const puzzleCount = Math.min(Math.floor(count / 10), shuffledPuzzles.length)
+
+    for (let i = 0; i < puzzleCount; i++) {
+      // 随机找一个位置插入拼图题，大概在 10*i 附近
+      const insertPos = Math.min(Math.floor(Math.random() * 10) + i * 10, picked.length - 1)
+      picked.splice(insertPos, 0, shuffledPuzzles[i])
     }
-    const others = bucketCounts.flatMap(({ c, n }) =>
-      shuffle(allQuestions.filter(x => 
-        x.category === c.key && x.id !== puzzleQuestion?.id
-      )).slice(0, n)
-    )
-    picked = [...picked, ...others]
-    // 确保数量正确，去重（避免重复题）
-    const seen = new Set<string>()
-    picked = picked.filter(p => {
-      if (seen.has(p.id)) return false
-      seen.add(p.id)
-      return true
-    })
-    // 除了第一题（拼图），其他题目可以打乱顺序
-    if (picked.length > 1) {
-      const [first, ...rest] = picked
-      picked = [first, ...shuffle(rest)]
+
+    // 保证总题数不变
+    if (picked.length > count) {
+      picked = picked.slice(0, count)
     }
   }
 
-  // 确保长度不超过 count
-  picked = picked.slice(0, count)
+  // 去重
+  const seen = new Set<string>()
+  picked = picked.filter(q => {
+    if (seen.has(q.id)) return false
+    seen.add(q.id)
+    return true
+  })
 
-  // 出题时不带 answer 直接返回？为演示与前端立即校验一致，保留 answer 字段。
-  // 生产可将 answer 剥离，通过 /api/questions/verify 校验。
+  // 如果不够数量，继续补
+  while (picked.length < count && shuffled.length > picked.length) {
+    const remaining = shuffled.find(q => !seen.has(q.id))
+    if (remaining) {
+      picked.push(remaining)
+      seen.add(remaining.id)
+    } else {
+      break
+    }
+  }
+
   return ok(picked)
 })

@@ -13,8 +13,7 @@
     <div v-else-if="!quiz.finished.value && quiz.current.value" class="card">
       <div class="subtle">
         第 {{ quiz.currentIndex.value + 1 }} / {{ quiz.questions.value.length }} 题
-        <span v-if="timerEnabled" style="float:right">⏱ {{ remaining }}s</span>
-        <span v-if="quiz.current.value.puzzleImage" style="float:right;margin-right:.5rem;color:#8b1e2b">🧩 拼图题</span>
+        <span v-if="quiz.current.value.puzzleImage" style="float:right;color:#8b1e2b">🧩 拼图题</span>
       </div>
       <div class="progress"><span :style="{width: progress + '%'}" /></div>
 
