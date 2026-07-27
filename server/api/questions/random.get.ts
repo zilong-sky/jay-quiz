@@ -51,15 +51,23 @@ export default defineEventHandler(async (event) => {
   const shuffled = shuffle(normalQuestions)
   picked = shuffled.slice(0, count)
 
-  // 拼图题随机分布：每10道题插入一个拼图题
-  if (puzzleQuestions.length > 0) {
+  // 拼图题分布规则：
+  // 1. 前10道题不出现拼图
+  // 2. 10道题之后，每10道题的区间里随机出现1次
+  if (puzzleQuestions.length > 0 && count > 10) {
     const shuffledPuzzles = shuffle(puzzleQuestions)
-    const puzzleCount = Math.min(Math.floor(count / 10), shuffledPuzzles.length)
+    // 计算有多少个10题区间（从第10题开始算）
+    const sections = Math.floor((count - 10) / 10)
+    const puzzleCount = Math.min(sections, shuffledPuzzles.length)
 
     for (let i = 0; i < puzzleCount; i++) {
-      // 随机找一个位置插入拼图题，大概在 10*i 附近
-      const insertPos = Math.min(Math.floor(Math.random() * 10) + i * 10, picked.length - 1)
-      picked.splice(insertPos, 0, shuffledPuzzles[i])
+      // 每个10题区间内随机找一个位置插入
+      // 第1个区间：10-19题位置，第2个区间：20-29题位置，以此类推
+      const sectionStart = 10 + i * 10
+      const insertPos = sectionStart + Math.floor(Math.random() * 10)
+      if (insertPos < picked.length) {
+        picked.splice(insertPos, 0, shuffledPuzzles[i])
+      }
     }
 
     // 保证总题数不变
