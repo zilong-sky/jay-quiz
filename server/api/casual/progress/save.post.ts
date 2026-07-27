@@ -26,13 +26,12 @@ export default defineEventHandler(async (event) => {
       await kv.set(`${baseKey}:offset`, body.offset)
     }
 
-    // 累计答对题目数
-    const newTotal = currentTotal + body.correctCount
-    await kv.set(`${baseKey}:total`, newTotal)
+    // 直接用前端传过来的累计总数，避免重复累加
+    await kv.set(`${baseKey}:total`, body.correctCount)
 
     return ok({
       offset: Math.max(body.offset, currentProgress),
-      totalCorrect: newTotal
+      totalCorrect: body.correctCount
     })
   } catch (e) {
     return fail('保存进度失败')

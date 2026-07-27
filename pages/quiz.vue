@@ -297,16 +297,23 @@ async function restart() {
 
 // 保存休闲模式进度到服务端
 async function saveCasualProgress() {
-  const batchCorrectCount = quiz.session.value ? quiz.session.value.records.filter(r => r.correct).length : 0
+  const batchCorrectCount = quiz.records.value.filter(r => r.correct).length
   await $fetch('/api/casual/progress/save', {
     method: 'POST',
     body: {
       category: currentCategory.value,
-      offset: globalOffset.value + quiz.currentIndex.value + 1,
-      correctCount: batchCorrectCount
+      offset: globalOffset.value + quiz.currentIndex.value + (answered.value ? 1 : 0),
+      correctCount: totalCorrectCount.value + batchCorrectCount
     }
   })
 }
+
+// 每答完一题就自动保存进度
+watch(answered, (val) => {
+  if (val) {
+    saveCasualProgress()
+  }
+})
 
 onMounted(async () => {
   await auth.fetchMe()
