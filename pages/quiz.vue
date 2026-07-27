@@ -123,6 +123,13 @@ const uploadStatus = ref('')
 const uploadChoiceMade = ref(false)
 const storage = useStorage()
 
+// 休闲模式状态
+const casualMode = ref(true) // 默认休闲模式：顺序答题
+const currentCategory = ref<string | undefined>(undefined)
+const globalOffset = ref(0) // 全局答题进度
+const totalCorrectCount = ref(0) // 累计答对题数
+const pageSize = 10 // 每批加载10题
+
 // 拼图相关
 const puzzleRef = ref()
 const puzzleCompleted = ref(false)
@@ -293,65 +300,72 @@ function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null } }
 async function restart() {
   // 重新开始答题，清除进度
   storage.remove('quizSession')
+  async function restart() {
+    // 休闲模式重置不从0开始，而是继续当前进度
+    answered.value = false
+    selectedOpt.value = null
+    blankInput.value = ''
+    puzzleCompleted.value = false
+    loading.value = true
   
-  answered.value = false
-  selectedOpt.value = null
-  blankInput.value = ''
-  uploadStatus.value = ''
-  uploadChoiceMade.value = false
-  loadError.value = ''
-  puzzleCompleted.value = false
-  loading.value = true
-  const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
-  if (res.code !== 0) {
-    loadError.value = res.message || '题目加载失败'
-  }
-  loading.value = false
-  startTimer()
-}
-
-onMounted(async () => {
-  // 先尝试恢复进度
-  const saved = storage.get<{ questions: any[]; currentIndex: number; category?: string }>('quizSession')
-  const currentCategory = route.query.cat as string
-  
-  await auth.fetchMe()
-  
-  // 只有当保存的分类与当前请求的分类一致时才恢复
-  if (saved && saved.questions && saved.questions.length > 0 && saved.category === currentCategory) {
-    quiz.questions.value = saved.questions
-    quiz.currentIndex.value = saved.currentIndex
-    loading.value = false
-    startTimer()
-    return
-  }
-  
-  // 没有或分类不一致则重新加载
-  const res = await quiz.loadQuestions(10, (route.query.cat as any) || undefined)
-  if (res.code !== 0) {
-    loadError.value = res.message || '题目加载失败'
-  }
-  loading.value = false
-  startTimer()
-})
-
-onBeforeUnmount(stopTimer)
-
-// 每次切换题目时保存进度
-watch(
-  () => quiz.currentIndex.value,
-  () => {
-    if (quiz.questions.value.length > 0 && !quiz.finished.value) {
-      storage.set('quizSession', {
-        questions: quiz.questions.value,
-        currentIndex: quiz.currentIndex.value,
-        category: route.query.cat as string
-      })
+    // 休闲模式：按顺序加载下一批题目
+    const res = await quiz.loadSequentialQuestions(globalOffset.value, pageSize, currentCategory.value as any)
+    if (res.code !== 0) {
+      loadError.value = res.message || '题目加载失败'
     }
+    loading.value = false
   }
-)
 
-watch(timerEnabled, (v) => { if (v && !answered.value) startTimer(); else stopTimer() })
+  // 保存休闲模式进度到服务端
+  async function saveCasualProgress() {
+    const batchCorrectCount = quiz.session.value ? quiz.session.value.records.filter(r => r.correct).length : 0
+    await $fetch('/api/casual/progress/save', {
+      method: 'POST',
+      body: {
+        category: currentCategory.value,
+        offset: globalOffset.value + quiz.currentIndex.value + 1,
+        correctCount: batchCorrectCount
+      }
+    })
+  }
+
+  onMounted(async () => {
+    await auth.fetchMe()
+  
+    currentCategory.value = route.query.cat as string || undefined
+  
+    // 加载历史进度
+    const progressRes = await $fetch('/api/casual/progress/get', {
+      query: { category: currentCategory.value }
+    })
+    if (progressRes.code === 0 && progressRes.data) {
+      globalOffset.value = progressRes.data.offset || 0
+      totalCorrectCount.value = progressRes.data.totalCorrect || 0
+    }
+  
+    // 按当前进度加载题目
+    loading.value = true
+    const res = await quiz.loadSequentialQuestions(globalOffset.value, pageSize, currentCategory.value as any)
+    if (res.code !== 0) {
+      loadError.value = res.message || '题目加载失败'
+    }
+    loading.value = false
+  })
+
+  onBeforeUnmount(async () => {
+    // 退出时自动保存进度
+    await saveCasualProgress()
+  })
+
+  // 答题完成自动保存并加载下一批
+  watch(quiz.finished, async (finished) => {
+    if (finished) {
+      await saveCasualProgress()
+      // 更新全局偏移，加载下一批
+      globalOffset.value += quiz.questions.value.length
+      // 这里可以自动加载下一批，或者提示用户
+    }
+  })
 </script>
 
 <style scoped>

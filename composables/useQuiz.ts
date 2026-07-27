@@ -31,6 +31,22 @@ export const useQuiz = () => {
     return res
   }
 
+  // 顺序加载题目（分页）
+  async function loadSequentialQuestions(offset = 0, limit = 10, category?: QuestionCategory) {
+    const res = await useRequest<{ questions: Question[], total: number, hasMore: boolean, nextOffset: number }>('/api/questions/list', {
+      query: { offset, limit, ...(category ? { category } : {}) }
+    })
+    if (res.code === 0 && res.data) {
+      questions.value = res.data.questions
+      currentIndex.value = 0
+      records.value = []
+      finished.value = false
+      startedAt.value = Date.now()
+      currentQuestionStart.value = Date.now()
+    }
+    return res
+  }
+
   function submitAnswer(userAnswer: string) {
     const q = current.value
     if (!q) return null
@@ -94,6 +110,6 @@ export const useQuiz = () => {
   return {
     questions, currentIndex, current, records, totalScore,
     finished, session,
-    loadQuestions, submitAnswer, next, finish, uploadScore
+    loadQuestions, loadSequentialQuestions, submitAnswer, next, finish, uploadScore
   }
 }
