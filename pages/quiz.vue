@@ -75,32 +75,13 @@
       </div>
     </div>
 
-    <!-- 结算 -->
+    <!-- 结算（休闲模式） -->
     <div v-else-if="quiz.finished.value && quiz.session.value" class="card">
-      <h3 style="margin-top:0;color:#0f3d2e">🎉 答题结果</h3>
-      <p>总分：<b style="font-size:1.5rem;color:#8b1e2b">{{ quiz.session.value.totalScore }}</b> / 100</p>
-      <p>粉丝等级：<span class="badge">{{ quiz.session.value.level }}</span></p>
-      <p>用时：{{ (quiz.session.value.totalCostMs/1000).toFixed(1) }} 秒</p>
-      <p>正确题数：{{ correctCount }} / {{ quiz.session.value.records.length }}</p>
-
-      <p v-if="uploadStatus" class="subtle">{{ uploadStatus }}</p>
-
-      <!-- 未登录：选择是否参与排行榜 -->
-      <div v-if="!auth.isLoggedIn.value && !uploadChoiceMade" style="margin-top:1rem;padding:1rem;background:#f8f5e8;border-radius:8px">
-        <p style="margin:0 0 .5rem 0;font-weight:500">📊 是否参与周榜排名？</p>
-        <div style="display:flex;gap:.5rem">
-          <button class="btn" @click="uploadAndLogin">参与排行榜（需登录）</button>
-          <button class="btn ghost" @click="saveLocalOnly">仅保存本地</button>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:.5rem;margin-top:.5rem">
-        <button class="btn" @click="restart">再来一局</button>
-        <NuxtLink to="/ranking" class="btn ghost">看看排行榜</NuxtLink>
-      </div>
-
-      <p v-if="!auth.isLoggedIn.value && uploadChoiceMade" class="subtle" style="margin-top:.75rem">
-        💡 <NuxtLink to="/login">登录</NuxtLink> 后可自动上传历史最高分参与排名。
+      <h3 style="margin-top:0;color:#0f3d2e">🎉 本批答题完成</h3>
+      <p>本批正确：<b style="font-size:1.5rem;color:#8b1e2b">{{ correctCount }}</b> / {{ quiz.session.value.records.length }}</p>
+      <p>累计答对：<b style="font-size:1.2rem;color:#0f3d2e">{{ totalCorrectCount + correctCount }}</b> 道题</p>
+      <p style="margin-top:1rem">
+        <button class="btn" @click="restart">继续答题</button>
       </p>
     </div>
   </section>
