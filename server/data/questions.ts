@@ -25,7 +25,7 @@ for (let i = 0; i < 1000; i++) {
   LYRICS.push(q({
     category: 'lyrics',
     type: 'blank',
-    content: `${template.song} 第${i + 1}题：${template.line}`,
+    content: `${template.song} ${template.line}`,
     answer: template.answer,
     explanation: `出自周杰伦${template.song}，正确答案是「${template.answer}」。`,
     difficulty: 1
@@ -52,7 +52,7 @@ for (let i = 0; i < 1000; i++) {
   CREATION.push(q({
     category: 'creation',
     type: 'single',
-    content: `第${i + 1}题：${template.q}`,
+    content: template.q,
     answer: template.a,
     options: template.opts,
     explanation: `正确答案是「${template.a}」。`,
@@ -80,7 +80,7 @@ for (let i = 0; i < 1000; i++) {
   LIFE.push(q({
     category: 'life',
     type: 'single',
-    content: `第${i + 1}题：${template.q}`,
+    content: template.q,
     answer: template.a,
     options: template.opts,
     explanation: `正确答案是「${template.a}」。`,
